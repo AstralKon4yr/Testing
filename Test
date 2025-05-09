@@ -18,73 +18,72 @@ local rifts = workspace:FindFirstChild("Rendered"):FindFirstChild("Rifts");
 local whitelisted_eggs = { -- теперь тут меняешь вебхуки НА КАЖДОЕ ЯЙЦО/СУНДУК, в luck через запятую в кавычках прописываешь множитель удачи
     ["rainbow-egg"] = {
         webhook = "https://discord.com/api/webhooks/1369680016367161465/ytWtBI3H3EKVrjifey0KMsJ05wEtuy1cdMV7EvJ5OX6cb128k36s17sS8EYM7pCXkxkg",
-        role_id = 0,
-        luck = { "x25" },
-        name = "Rainbow Egg"
+		role_id = 0,
+		luck = { "x25" },
+		name = "Rainbow Egg"
     },
     ["nightmare-egg"] = {
         webhook = "https://discord.com/api/webhooks/1369679913308655828/es2UQtG9m_FY_aYotNaVKpFNwDXj0IOakFJg3g8lQ107fAHPJWoUqvU_1_RLEpCGUmIJ",
-        role_id = 0,
-        luck = { "x25" },
-        name = "Nightmare Egg"
+		role_id = 0,
+		luck = { "x25" },
+		name = "Nightmare Egg"
     },
     ["void-egg"] = {
         webhook = "https://discord.com/api/webhooks/1369680094322364446/vkkzcYcVY30Tb-D2MRZMrQbR3d2U_0YCdevjgPR2QTaEjFcFs8b7uZbEi-C5u60Bum6N",
-        role_id = 0,
-        luck = { "x25" },
-        name = "Void Egg"
+		role_id = 0,
+		luck = { "x25" },
+		name = "Void Egg"
     },
     ["royal-chest"] = {
         webhook = "https://discord.com/api/webhooks/1369320116969541702/217cjweQ3Aga1IwwBzClwuNpe2KoXRKOq2IJMCV9sgzlEpd9iYHH2UJ89IT4qq8smumE",
-        role_id = 0,
-        name = "Royal Chest"
+		role_id = 0,
+		name = "Royal Chest"
     },
     ["bubble-rift"] = {
         webhook = "https://discord.com/api/webhooks/1369680404487077958/pNTDbV_qBHqzTKXrxagTlqMyFgc13qmtRha8ca1Fkn9AdlnFgjT977lDU9A8Tavw1Ju9",
-        role_id = 0,
-        name = "Bubble Rift"
+		role_id = 0,
+		name = "Bubble Rifft"
     },
     ["silly-egg"] = {
         webhook = "https://discord.com/api/webhooks/1369679726079250556/x9d_fCkwW-oLKaBE1yQxGenYnkVt3n_HgolUed6-xLRyVvh5MQED22AX8beYs4mSnwud",
-        role_id = 0,
-        luck = { "x10" },
-        name = "Silly Egg"
+		role_id = 0,
+		luck = { "x10" },
+		name = "Silly Egg"
     },
     ["mining-egg"] = {
         webhook = "https://discord.com/api/webhooks/1369680163113140354/KSzLYRiJMmYeeGOv4aSekxlVxrxihddZrvyJ_AfAtwDZsLCCYwXMvYq7HrEfP1N6tJjH",
-        role_id = 0,
-        luck = { "x25" },
-        name = "Mining Egg"
+		role_id = 0,
+		luck = { "x25" },
+		name = "Mining Egg"
     },
     ["cyber-egg"] = {
         webhook = "https://discord.com/api/webhooks/1369680252145504256/OEFlHbKAzOuz6kZ97gcgsNyDrBR6wMBNlwiaIXWVNTeXUM5yIDLPGstTawfPE4Lx6a6R",
-        role_id = 0,
-        luck = { "x25" },
-        name = "Cyber Egg"
+		role_id = 0,
+		luck = { "x25" },
+		name = "Cyber Egg"
     },
     ["game-egg"] = {
-        webhook = "https://discord.com/api/webhooks/1369680252145504256/OEFlHbKAzOuz6kZ97gcgsNyDrBR6wMBNlwiaIXWVNTeXUM5yIDLPGstTawfPE4Lx6a6R",
-        role_id = 0,
-        luck = { "x25" },
-        name = "Game Egg"
+        webhook = "",
+		role_id = 0,
+		luck = { "x25" },
+		name = "Game Egg"
     },
-    ["dice-rift"] = {
+	["dice-chest"] = {
         webhook = "https://discord.com/api/webhooks/1369680321729138718/s6R5cyeB3k9sBAD4Akxaem86xzxW4-6lNWgs-V5P2TDH86pxWl7mT1Wwvs-XfN4O-GVS",
-        role_id = 0,
-        name = "Dice Rift"
+		role_id = 0,
+		name = "Dice Chest"
     }
 };
 local spam_messages = {
-    "Best Rift Finder = ģģ/ easyrift🚀",
-    "Silly Egg is found! ģģ/ easyrift🥚",
-    "Best Pet Shop = ģģ/ easyrift🐶",
-    "REACH THE LEADERBOARDS USING ğğ/ easyrift🏆",
-    "SECRETS GIVE-AWAY HAPPENING ģģ/ easyrift🐶",
-    "X25 LUCK RIFTS AT ģģ/ easyrift🍀",
-    "GET SILLY EGG AT ģģ/ easyrift🥚",
+	"Best Rift Finder = ģģ/ easyrift 🔥",
+	"Silly Egg is found! ģģ/ easyrift 🔥",
+	"Best Pet Shop = ģģ/ easyrift 🔥",
+	"REACH THE LEADERBOARDS USING ğğ/ easyrift 🏆",
+	"SECRETS GIVE-AWAY HAPPENING ģģ/ easyrift 🌟",
+	"X25 LUCK RIFTS AT ģģ/ easyrift 🍀",
+	"GET SILLY EGG AT ģģ/ easyrift 🥚"
 };
 
-local join_code = string.format('game.TeleportService:TeleportToPlaceInstance(%d, "%s", game.Players.LocalPlayer)', game.PlaceId, game.JobId);
 local join_link = string.format('https://www.roblox.com/games/start?placeId=16302670534&launchData=%d/%s', game.PlaceId, game.JobId);
 
 local parse_time = function(text)
@@ -116,39 +115,63 @@ local notify = function(webhook, data)
 	return request({Url = webhook, Body = game:GetService("HttpService"):JSONEncode(data), Method = "POST", Headers = { ['content-type'] = "application/json" }});
 end
 
+local all_ids = {};
+local foundAnything = "";
+local actualHour = os.date("!*t").hour;
+local Deleted = false;
+local servers_file = pcall(function()
+    all_ids = game:GetService('HttpService'):JSONDecode(readfile("saved_servers.json"));
+end)
+if not servers_file then
+    table.insert(all_ids, actualHour);
+    writefile("saved_servers.json", game:GetService('HttpService'):JSONEncode(all_ids));
+end
+
 local serverhop = function()
-	local req = request({
-		Url = string.format("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Desc&limit=100&excludeFullGames=true", game.PlaceId)
-	})
-	
-	local success, body = pcall(function()
-		return game:GetService("HttpService"):JSONDecode(req.Body)
-	end)
-	
-	if success and body and body.data then
-		local servers = {}
-		
-		for _, server in pairs(body.data) do
-			if server.playing < server.maxPlayers and server.id ~= game.JobId then
-				table.insert(servers, server)
-			end
-		end
-		
-		if #servers > 0 then
-			local selectedServer = servers[math.random(1, #servers)];
-			game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, selectedServer.id, local_player);
-		else
-			repeat
-				game:GetService("TeleportService"):Teleport(game.PlaceId, local_player);
-				task.wait(10);
-			until game:FindFirstChild("NetworkClient") ~= nil;
-		end
-	else
-		repeat
-            game:GetService("TeleportService"):Teleport(game.PlaceId, local_player);
-            task.wait(10);
-        until game:FindFirstChild("NetworkClient") ~= nil;
-	end
+local Site;
+    if foundAnything == "" then
+        Site = game.HttpService:JSONDecode(game:HttpGet('https://games.roblox.com/v1/games/' .. game.PlaceId .. '/servers/Public?sortOrder=Asc&limit=100'))
+    else
+        Site = game.HttpService:JSONDecode(game:HttpGet('https://games.roblox.com/v1/games/' .. game.PlaceId .. '/servers/Public?sortOrder=Asc&limit=100&cursor=' .. foundAnything))
+    end
+    local ID = ""
+    if Site.nextPageCursor and Site.nextPageCursor ~= "null" and Site.nextPageCursor ~= nil then
+        foundAnything = Site.nextPageCursor
+    end
+    local num = 0;
+    for i,v in pairs(Site.data) do
+        local Possible = true
+        ID = tostring(v.id)
+        if tonumber(v.maxPlayers) > tonumber(v.playing) then
+            for _,Existing in pairs(all_ids) do
+                if num ~= 0 then
+                    if ID == tostring(Existing) then
+                        Possible = false
+                    end
+                else
+                    if tonumber(actualHour) ~= tonumber(Existing) then
+                        local delFile = pcall(function()
+                            delfile("saved_servers.json")
+                            all_ids = {}
+                            table.insert(all_ids, actualHour)
+                        end)
+                    end
+                end
+                num = num + 1
+            end
+            if Possible == true then
+                table.insert(all_ids, ID)
+                wait()
+                pcall(function()
+                    writefile("saved_servers.json", game:GetService('HttpService'):JSONEncode(all_ids))
+                    wait()
+                    game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, ID, local_player)
+                end)
+                wait(4)
+				break;
+            end
+        end
+    end
 end
 
 task.spawn(function() -- anti afk (xz zachem, poidet)
@@ -224,10 +247,6 @@ do
 						{
 							['name'] = "**🔗 Join link**",
 							['value'] = join_link
-						},
-						{
-							['name'] = "**👨‍💻 Join script**",
-							['value'] = string.format("```%s```", join_code)
 						}
 					},
 					['color'] = 4508791,
@@ -238,10 +257,16 @@ do
 
 		notify(data.webhook, message);
 	end
-wait(15);
+wait(15)
 	serverhop();
+	if foundAnything ~= "" then
+		serverhop();
+	end
 end
 
 game:GetService("CoreGui"):FindFirstChild("RobloxPromptGui"):FindFirstChild("promptOverlay").ChildAdded:Connect(function(child) -- при кике игрой
     serverhop();
+	if foundAnything ~= "" then
+		serverhop();
+	end
 end)
