@@ -63,7 +63,7 @@ local whitelisted_eggs = { -- теперь тут меняешь вебхуки 
 		name = "Cyber Egg"
     },
     ["game-egg"] = {
-        webhook = "",
+        webhook = "https://discord.com/api/webhooks/1369680321729138718/s6R5cyeB3k9sBAD4Akxaem86xzxW4-6lNWgs-V5P2TDH86pxWl7mT1Wwvs-XfN4O-GVS",
 		role_id = 0,
 		luck = { "x25" },
 		name = "Game Egg"
