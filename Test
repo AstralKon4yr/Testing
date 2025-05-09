@@ -257,7 +257,7 @@ do
 
 		notify(data.webhook, message);
 	end
-wait(15)
+
 	serverhop();
 	if foundAnything ~= "" then
 		serverhop();
