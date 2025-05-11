@@ -1,12 +1,12 @@
 -- [[ меняй эти настройки для оптимизации ]]
 getgenv().Optimization = {
-	state = true, -- вкл/выкл
-	hide_screen = true, -- выключает прорисовку графики, бустит жесточайше фпс (вкл/выкл)
-	fps = 5
+    state = true, -- вкл/выкл
+    hide_screen = true, -- выключает прорисовку графики, бустит жесточайше фпс (вкл/выкл)
+    fps = 30
 };
 
 if getgenv().Optimization.state then
-	if setfpscap ~= nil then setfpscap(getgenv().Optimization.fps); end
+    if setfpscap ~= nil then setfpscap(getgenv().Optimization.fps); end
     UserSettings().GameSettings.MasterVolume = 0;
     settings().Rendering.QualityLevel = "Level01";
     game:GetService("RunService"):Set3dRenderingEnabled(not getgenv().Optimization.hide_screen);
@@ -42,12 +42,12 @@ local whitelisted_eggs = { -- теперь тут меняешь вебхуки 
     ["bubble-rift"] = {
         webhook = "https://discord.com/api/webhooks/1369680404487077958/pNTDbV_qBHqzTKXrxagTlqMyFgc13qmtRha8ca1Fkn9AdlnFgjT977lDU9A8Tavw1Ju9",
         role_id = 0,
-        name = "Bubble Rift"
+        name = "Bubble Rifft"
     },
     ["silly-egg"] = {
         webhook = "https://discord.com/api/webhooks/1369679726079250556/x9d_fCkwW-oLKaBE1yQxGenYnkVt3n_HgolUed6-xLRyVvh5MQED22AX8beYs4mSnwud",
         role_id = 0,
-        luck = { "x10" },
+        luck = { "x25" },
         name = "Silly Egg"
     },
     ["mining-egg"] = {
@@ -63,36 +63,51 @@ local whitelisted_eggs = { -- теперь тут меняешь вебхуки 
         name = "Cyber Egg"
     },
     ["game-egg"] = {
-        webhook = "https://discord.com/api/webhooks/1369680252145504256/OEFlHbKAzOuz6kZ97gcgsNyDrBR6wMBNlwiaIXWVNTeXUM5yIDLPGstTawfPE4Lx6a6R",
+        webhook = "",
         role_id = 0,
         luck = { "x25" },
         name = "Game Egg"
     },
-    ["dice-rift"] = {
+    ["dice-chest"] = {
         webhook = "https://discord.com/api/webhooks/1369680321729138718/s6R5cyeB3k9sBAD4Akxaem86xzxW4-6lNWgs-V5P2TDH86pxWl7mT1Wwvs-XfN4O-GVS",
         role_id = 0,
-        name = "Dice Rift"
+        name = "Dice Chest"
+    }
+	["underworld-1"] = {
+        webhook = "https://discord.com/api/webhooks/1371074619645235243/u_0v1rptBiojPUlQSSwaA7zoIbryx-4qEK1JZaaJkKd82T9Mo4VWMN3hyD6beszMNcYY",
+        role_id = 0,
+        name = "Underworld 1"
+    }
+	["underworld-2"] = {
+        webhook = "https://discord.com/api/webhooks/1371074619645235243/u_0v1rptBiojPUlQSSwaA7zoIbryx-4qEK1JZaaJkKd82T9Mo4VWMN3hyD6beszMNcYY",
+        role_id = 0,
+        name = "Underworld 2"
+    }
+		["underworld-3"] = {
+        webhook = "https://discord.com/api/webhooks/1371074619645235243/u_0v1rptBiojPUlQSSwaA7zoIbryx-4qEK1JZaaJkKd82T9Mo4VWMN3hyD6beszMNcYY",
+        role_id = 0,
+        name = "Underworld 3"
     }
 };
 local spam_messages = {
-    "Best Rift Finder = ģģ/ easyrift🚀",
-    "Silly Egg is found! ģģ/ easyrift🥚",
-    "Best Pet Shop = ģģ/ easyrift🐶",
-    "REACH THE LEADERBOARDS USING ğğ/ easyrift🏆",
-    "SECRETS GIVE-AWAY HAPPENING ģģ/ easyrift🐶",
-    "X25 LUCK RIFTS AT ģģ/ easyrift🍀",
-    "GET SILLY EGG AT ģģ/ easyrift🥚",
+    "Best Rift Finder = ģģ/ easyrift 🔥",
+    "Silly Egg is found! ģģ/ easyrift 🔥",
+    "Best Pet Shop = ģģ/ easyrift 🔥",
+    "REACH THE LEADERBOARDS USING ğğ/ easyrift 🏆",
+    "SECRETS GIVE-AWAY HAPPENING ģģ/ easyrift 🌟",
+    "X25 LUCK RIFTS AT ģģ/ easyrift 🍀",
+    "GET SILLY EGG AT ģģ/ easyrift 🥚"
+    "UNDERWORLD RIFT ģģ/ easyrift 🥚"
 };
 
-local join_code = string.format('game.TeleportService:TeleportToPlaceInstance(%d, "%s", game.Players.LocalPlayer)', game.PlaceId, game.JobId);
 local join_link = string.format('https://www.roblox.com/games/start?placeId=16302670534&launchData=%d/%s', game.PlaceId, game.JobId);
 
 local parse_time = function(text)
-	text = string.lower(string.gsub(text, "^%s*(.-)%s*$", "%1"));
+    text = string.lower(string.gsub(text, "^%s*(.-)%s*$", "%1"));
     local number, unit = string.match(text, "(%d+)%s*(%a+)");
     if number == nil or unit == nil then 
-		return 0;
-	end
+        return 0;
+    end
     
     number = tonumber(number);
     
@@ -108,47 +123,69 @@ local parse_time = function(text)
 end
 
 local time_to_discorddate = function(time_)
-	return string.format("<t:%d:R>", time_);
+    return string.format("<t:%d:R>", time_);
 end
 
 local request = (syn ~= nil and syn.request) or (http ~= nil and http.request) or (fluxus ~= nil and fluxus.request) or http_request or request;
 local notify = function(webhook, data)
-	return request({Url = webhook, Body = game:GetService("HttpService"):JSONEncode(data), Method = "POST", Headers = { ['content-type'] = "application/json" }});
+    return request({Url = webhook, Body = game:GetService("HttpService"):JSONEncode(data), Method = "POST", Headers = { ['content-type'] = "application/json" }});
 end
 
 local serverhop = function()
-	local req = request({
-		Url = string.format("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Desc&limit=100&excludeFullGames=true", game.PlaceId)
-	})
-	
-	local success, body = pcall(function()
-		return game:GetService("HttpService"):JSONDecode(req.Body)
-	end)
-	
-	if success and body and body.data then
-		local servers = {}
-		
-		for _, server in pairs(body.data) do
-			if server.playing < server.maxPlayers and server.id ~= game.JobId then
-				table.insert(servers, server)
-			end
-		end
-		
-		if #servers > 0 then
-			local selectedServer = servers[math.random(1, #servers)];
-			game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, selectedServer.id, local_player);
-		else
-			repeat
-				game:GetService("TeleportService"):Teleport(game.PlaceId, local_player);
-				task.wait(10);
-			until game:FindFirstChild("NetworkClient") ~= nil;
-		end
-	else
-		repeat
+    wait(15);
+
+    local file = "serverhop_history.json";
+    local history = {};
+    local current_time = os.time();
+    
+    -- Load history if file exists
+    if pcall(function() readfile(file) end) then
+        history = game:GetService("HttpService"):JSONDecode(readfile(file))
+        
+        local new_history = {};
+        for serverId, jt in pairs(history) do
+            if current_time - jt < 540 then
+                new_history[serverId] = jt;
+            end
+        end
+
+        history = new_history;
+    end
+    
+    local req = request({
+        Url = string.format("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Desc&limit=100&excludeFullGames=true", game.PlaceId);
+    })
+    
+    local success, body = pcall(function()
+        return game:GetService("HttpService"):JSONDecode(req.Body);
+    end)
+    
+    if success and body and body.data then
+        local servers = {};
+        
+        for _, server in pairs(body.data) do
+            if server.playing < server.maxPlayers and server.id ~= game.JobId and not history[server.id] then
+                table.insert(servers, server);
+            end
+        end
+        
+        if #servers > 0 then
+            local selected_server = servers[math.random(1, #servers)];
+            history[selected_server.id] = current_time;
+            writefile(file, game:GetService("HttpService"):JSONEncode(history));
+            game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, selected_server.id, local_player);
+        else
+            repeat
+                game:GetService("TeleportService"):Teleport(game.PlaceId, local_player);
+                task.wait(20);
+            until game:FindFirstChild("NetworkClient") ~= nil;
+        end
+    else
+        repeat
             game:GetService("TeleportService"):Teleport(game.PlaceId, local_player);
-            task.wait(10);
+            task.wait(20);
         until game:FindFirstChild("NetworkClient") ~= nil;
-	end
+    end
 end
 
 task.spawn(function() -- anti afk (xz zachem, poidet)
@@ -158,88 +195,84 @@ task.spawn(function() -- anti afk (xz zachem, poidet)
 end)
 
 task.spawn(function()
-	local channel = game:GetService("TextChatService"):WaitForChild("TextChannels"):WaitForChild("RBXGeneral");
-	local time = 1;
-	while task.wait() do
-		channel:SendAsync(spam_messages[Random.new(tick()):NextInteger(1, #spam_messages)]);
-		time += 2;
-		if time > 6 then
-			time = 1;
-		end
+    local channel = game:GetService("TextChatService"):WaitForChild("TextChannels"):WaitForChild("RBXGeneral");
+    local time = 1;
+    while task.wait() do
+        channel:SendAsync(spam_messages[Random.new(tick()):NextInteger(1, #spam_messages)]);
+        time += 2;
+        if time > 6 then
+            time = 1;
+        end
 
-		task.wait(time);
-	end
+        task.wait(time);
+    end
 end)
 
 do
-	for _, rift in pairs(rifts:GetChildren()) do
-		if not rift:IsA("Model") or not whitelisted_eggs[rift.Name] then
-			continue;
-		end
+    for _, rift in pairs(rifts:GetChildren()) do
+        if not rift:IsA("Model") or not whitelisted_eggs[rift.Name] then
+            continue;
+        end
 
-		local data = whitelisted_eggs[rift.Name];
-		local luck = "None";
-		local gui = rift:FindFirstChild("Display"):FindFirstChildOfClass("SurfaceGui");
-		if data.luck ~= nil then
-			if gui == nil then
-				repeat task.wait(); gui = rift:FindFirstChild("Display"):FindFirstChildOfClass("SurfaceGui");
-				until gui ~= nil;
-			end
-			
-			if not table.find(data.luck, gui.Icon.Luck.Text) then
-				continue;
-			end
+        local data = whitelisted_eggs[rift.Name];
+        local luck = "None";
+        local gui = rift:FindFirstChild("Display"):FindFirstChildOfClass("SurfaceGui");
+        if data.luck ~= nil then
+            if gui == nil then
+                repeat task.wait(); gui = rift:FindFirstChild("Display"):FindFirstChildOfClass("SurfaceGui");
+                until gui ~= nil;
+            end
+            
+            if not table.find(data.luck, gui.Icon.Luck.Text) then
+                continue;
+            end
 
-			luck = gui.Icon.Luck.Text;
-		end
+            luck = gui.Icon.Luck.Text;
+        end
 
-		local time = os.time() + parse_time(gui.Timer.Text);
-		local discord_time = time_to_discorddate(time);
-		local height = math.floor(rift:GetPivot().Position.Y) - 4;
-		local message = {
-			['content'] = string.format("<@%d>", data.role_id),
-			['embeds'] = {
-				{ 
-					['title'] = string.format("**%s has been found!**", data.name), 
-					['fields'] = {
-						{
-							['name'] = "**⏲ Expires in**",
-							['value'] = discord_time,
-							['inline'] = true
-						},
-						{
-							['name'] = "**📏 Height**",
-							['value'] = string.format("`%d`", height),
-							['inline'] = true
-						},
-						{
-							['name'] = "**👤 Players**",
-							['value'] = string.format("`%d`", #players:GetPlayers()),
-							['inline'] = true
-						},
-						{
-							['name'] = "**🍀 Luck**",
-							['value'] = string.format("`%s`", luck)
-						},
-						{
-							['name'] = "**🔗 Join link**",
-							['value'] = join_link
-						},
-						{
-							['name'] = "**👨‍💻 Join script**",
-							['value'] = string.format("```%s```", join_code)
-						}
-					},
-					['color'] = 4508791,
-					['timestamp'] = DateTime.now():ToIsoDate()
-				}
-			}
-		};
+        local time = os.time() + parse_time(gui.Timer.Text);
+        local discord_time = time_to_discorddate(time);
+        local height = math.floor(rift:GetPivot().Position.Y) - 4;
+        local message = {
+            ['content'] = string.format("<@%d>", data.role_id),
+            ['embeds'] = {
+                { 
+                    ['title'] = string.format("**%s has been found!**", data.name), 
+                    ['fields'] = {
+                        {
+                            ['name'] = "**⏲ Expires in**",
+                            ['value'] = discord_time,
+                            ['inline'] = true
+                        },
+                        {
+                            ['name'] = "**📏 Height**",
+                            ['value'] = string.format("`%d`", height),
+                            ['inline'] = true
+                        },
+                        {
+                            ['name'] = "**👤 Players**",
+                            ['value'] = string.format("`%d`", #players:GetPlayers()),
+                            ['inline'] = true
+                        },
+                        {
+                            ['name'] = "**🍀 Luck**",
+                            ['value'] = string.format("`%s`", luck)
+                        },
+                        {
+                            ['name'] = "**🔗 Join link**",
+                            ['value'] = join_link
+                        }
+                    },
+                    ['color'] = 4508791,
+                    ['timestamp'] = DateTime.now():ToIsoDate()
+                }
+            }
+        };
 
-		notify(data.webhook, message);
-	end
-wait(15);
-	serverhop();
+        notify(data.webhook, message);
+    end
+
+    serverhop();
 end
 
 game:GetService("CoreGui"):FindFirstChild("RobloxPromptGui"):FindFirstChild("promptOverlay").ChildAdded:Connect(function(child) -- при кике игрой
