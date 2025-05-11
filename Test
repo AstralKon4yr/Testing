@@ -82,7 +82,6 @@ local spam_messages = {
     "SECRETS GIVE-AWAY HAPPENING ģģ/ easyrift🐶",
     "X25 LUCK RIFTS AT ģģ/ easyrift🍀",
     "GET SILLY EGG AT ģģ/ easyrift🥚",
-	"UNDERWORLD RIFT ģģ/ easyrift🥚"
 };
 
 local join_code = string.format('game.TeleportService:TeleportToPlaceInstance(%d, "%s", game.Players.LocalPlayer)', game.PlaceId, game.JobId);
