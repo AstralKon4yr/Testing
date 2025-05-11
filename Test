@@ -64,16 +64,19 @@ local whitelisted_eggs = { -- теперь тут меняешь вебхуки 
 	["underworld-1"] = {
         webhook = "https://discord.com/api/webhooks/1371074619645235243/u_0v1rptBiojPUlQSSwaA7zoIbryx-4qEK1JZaaJkKd82T9Mo4VWMN3hyD6beszMNcYY",
         role_id = 0,
+		luck = { "x25", "x10", "x5" },
         name = "Underworld 1"
     },
 	["underworld-2"] = {
         webhook = "https://discord.com/api/webhooks/1371074619645235243/u_0v1rptBiojPUlQSSwaA7zoIbryx-4qEK1JZaaJkKd82T9Mo4VWMN3hyD6beszMNcYY",
         role_id = 0,
+		luck = { "x25", "x10", "x5" },
         name = "Underworld 2"
     },
 	["underworld-3"] = {
         webhook = "https://discord.com/api/webhooks/1371074619645235243/u_0v1rptBiojPUlQSSwaA7zoIbryx-4qEK1JZaaJkKd82T9Mo4VWMN3hyD6beszMNcYY",
         role_id = 0,
+		luck = { "x25", "x10", "x5" },
         name = "Underworld 3"
     }
 };
