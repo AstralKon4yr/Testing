@@ -44,12 +44,6 @@ local whitelisted_eggs = { -- теперь тут меняешь вебхуки 
         role_id = 0,
         name = "Bubble Rifft"
     },
-    ["silly-egg"] = {
-        webhook = "https://discord.com/api/webhooks/1369679726079250556/x9d_fCkwW-oLKaBE1yQxGenYnkVt3n_HgolUed6-xLRyVvh5MQED22AX8beYs4mSnwud",
-        role_id = 0,
-        luck = { "x25" },
-        name = "Silly Egg"
-    },
     ["mining-egg"] = {
         webhook = "https://discord.com/api/webhooks/1369680163113140354/KSzLYRiJMmYeeGOv4aSekxlVxrxihddZrvyJ_AfAtwDZsLCCYwXMvYq7HrEfP1N6tJjH",
         role_id = 0,
@@ -62,28 +56,22 @@ local whitelisted_eggs = { -- теперь тут меняешь вебхуки 
         luck = { "x25" },
         name = "Cyber Egg"
     },
-    ["game-egg"] = {
-        webhook = "",
-        role_id = 0,
-        luck = { "x25" },
-        name = "Game Egg"
-    },
     ["dice-chest"] = {
         webhook = "https://discord.com/api/webhooks/1369680321729138718/s6R5cyeB3k9sBAD4Akxaem86xzxW4-6lNWgs-V5P2TDH86pxWl7mT1Wwvs-XfN4O-GVS",
         role_id = 0,
         name = "Dice Chest"
-    }
+    },
 	["underworld-1"] = {
         webhook = "https://discord.com/api/webhooks/1371074619645235243/u_0v1rptBiojPUlQSSwaA7zoIbryx-4qEK1JZaaJkKd82T9Mo4VWMN3hyD6beszMNcYY",
         role_id = 0,
         name = "Underworld 1"
-    }
+    },
 	["underworld-2"] = {
         webhook = "https://discord.com/api/webhooks/1371074619645235243/u_0v1rptBiojPUlQSSwaA7zoIbryx-4qEK1JZaaJkKd82T9Mo4VWMN3hyD6beszMNcYY",
         role_id = 0,
         name = "Underworld 2"
-    }
-		["underworld-3"] = {
+    },
+	["underworld-3"] = {
         webhook = "https://discord.com/api/webhooks/1371074619645235243/u_0v1rptBiojPUlQSSwaA7zoIbryx-4qEK1JZaaJkKd82T9Mo4VWMN3hyD6beszMNcYY",
         role_id = 0,
         name = "Underworld 3"
