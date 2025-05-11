@@ -45,9 +45,9 @@ local whitelisted_eggs = { -- теперь тут меняешь вебхуки 
 		name = "Bubble Rifft"
     },
     ["silly-egg"] = {
-        webhook = "https://discord.com/api/webhooks/1369679726079250556/x9d_fCkwW-oLKaBE1yQxGenYnkVt3n_HgolUed6-xLRyVvh5MQED22AX8beYs4mSnwud",
+        webhook = "",
 		role_id = 0,
-		luck = { "x10" },
+		luck = { "x25" },
 		name = "Silly Egg"
     },
     ["mining-egg"] = {
@@ -115,62 +115,60 @@ local notify = function(webhook, data)
 	return request({Url = webhook, Body = game:GetService("HttpService"):JSONEncode(data), Method = "POST", Headers = { ['content-type'] = "application/json" }});
 end
 
-local all_ids = {};
-local foundAnything = "";
-local actualHour = os.date("!*t").hour;
-local Deleted = false;
-local servers_file = pcall(function()
-    all_ids = game:GetService('HttpService'):JSONDecode(readfile("saved_servers.json"));
-end)
-if not servers_file then
-    table.insert(all_ids, actualHour);
-    writefile("saved_servers.json", game:GetService('HttpService'):JSONEncode(all_ids));
-end
-
 local serverhop = function()
-local Site;
-    if foundAnything == "" then
-        Site = game.HttpService:JSONDecode(game:HttpGet('https://games.roblox.com/v1/games/' .. game.PlaceId .. '/servers/Public?sortOrder=Asc&limit=100'))
-    else
-        Site = game.HttpService:JSONDecode(game:HttpGet('https://games.roblox.com/v1/games/' .. game.PlaceId .. '/servers/Public?sortOrder=Asc&limit=100&cursor=' .. foundAnything))
-    end
-    local ID = ""
-    if Site.nextPageCursor and Site.nextPageCursor ~= "null" and Site.nextPageCursor ~= nil then
-        foundAnything = Site.nextPageCursor
-    end
-    local num = 0;
-    for i,v in pairs(Site.data) do
-        local Possible = true
-        ID = tostring(v.id)
-        if tonumber(v.maxPlayers) > tonumber(v.playing) then
-            for _,Existing in pairs(all_ids) do
-                if num ~= 0 then
-                    if ID == tostring(Existing) then
-                        Possible = false
-                    end
-                else
-                    if tonumber(actualHour) ~= tonumber(Existing) then
-                        local delFile = pcall(function()
-                            delfile("saved_servers.json")
-                            all_ids = {}
-                            table.insert(all_ids, actualHour)
-                        end)
-                    end
-                end
-                num = num + 1
-            end
-            if Possible == true then
-                table.insert(all_ids, ID)
-                wait()
-                pcall(function()
-                    writefile("saved_servers.json", game:GetService('HttpService'):JSONEncode(all_ids))
-                    wait()
-                    game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, ID, local_player)
-                end)
-                wait(4)
-				break;
+	wait(15);
+
+    local file = "serverhop_history.json";
+    local history = {};
+    local current_time = os.time();
+    
+    -- Load history if file exists
+    if pcall(function() readfile(file) end) then
+        history = game:GetService("HttpService"):JSONDecode(readfile(file))
+        
+        local new_history = {};
+        for serverId, jt in pairs(history) do
+            if current_time - jt < 540 then
+                new_history[serverId] = jt;
             end
         end
+
+        history = new_history;
+    end
+    
+    local req = request({
+        Url = string.format("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Desc&limit=100&excludeFullGames=true", game.PlaceId);
+    })
+    
+    local success, body = pcall(function()
+        return game:GetService("HttpService"):JSONDecode(req.Body);
+    end)
+    
+    if success and body and body.data then
+        local servers = {};
+        
+        for _, server in pairs(body.data) do
+            if server.playing < server.maxPlayers and server.id ~= game.JobId and not history[server.id] then
+                table.insert(servers, server);
+            end
+        end
+        
+        if #servers > 0 then
+            local selected_server = servers[math.random(1, #servers)];
+            history[selected_server.id] = current_time;
+            writefile(file, game:GetService("HttpService"):JSONEncode(history));
+            game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, selected_server.id, local_player);
+        else
+            repeat
+                game:GetService("TeleportService"):Teleport(game.PlaceId, local_player);
+                task.wait(20);
+            until game:FindFirstChild("NetworkClient") ~= nil;
+        end
+    else
+        repeat
+            game:GetService("TeleportService"):Teleport(game.PlaceId, local_player);
+            task.wait(20);
+        until game:FindFirstChild("NetworkClient") ~= nil;
     end
 end
 
@@ -257,16 +255,10 @@ do
 
 		notify(data.webhook, message);
 	end
-wait(15)
+
 	serverhop();
-	if foundAnything ~= "" then
-		serverhop();
-	end
 end
 
 game:GetService("CoreGui"):FindFirstChild("RobloxPromptGui"):FindFirstChild("promptOverlay").ChildAdded:Connect(function(child) -- при кике игрой
     serverhop();
-	if foundAnything ~= "" then
-		serverhop();
-	end
 end)
