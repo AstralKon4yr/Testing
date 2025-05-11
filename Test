@@ -68,19 +68,19 @@ local whitelisted_eggs = { -- теперь тут меняешь вебхуки 
         name = "Dice Rift"
     },
 	["underworld-1"] = {
-        webhook = "https://discord.com/api/webhooks/1371074619645235243/u_0v1rptBiojPUlQSSwaA7zoIbryx-4qEK1JZaaJkKd82T9Mo4VWMN3hyD6beszMNcYY",
+        webhook = "https://discord.com/api/webhooks/1369680321729138718/s6R5cyeB3k9sBAD4Akxaem86xzxW4-6lNWgs-V5P2TDH86pxWl7mT1Wwvs-XfN4O-GVS",
         role_id = 0,
 		luck = { "x25" },
         name = "Underworld 1"
     },
 	["underworld-2"] = {
-        webhook = "https://discord.com/api/webhooks/1371074619645235243/u_0v1rptBiojPUlQSSwaA7zoIbryx-4qEK1JZaaJkKd82T9Mo4VWMN3hyD6beszMNcYY",
+        webhook = "https://discord.com/api/webhooks/1369680321729138718/s6R5cyeB3k9sBAD4Akxaem86xzxW4-6lNWgs-V5P2TDH86pxWl7mT1Wwvs-XfN4O-GVS",
         role_id = 0,
 		luck = { "x25" },
         name = "Underworld 2"
     },
 	["underworld-3"] = {
-        webhook = "https://discord.com/api/webhooks/1371074619645235243/u_0v1rptBiojPUlQSSwaA7zoIbryx-4qEK1JZaaJkKd82T9Mo4VWMN3hyD6beszMNcYY",
+        webhook = "https://discord.com/api/webhooks/1369680321729138718/s6R5cyeB3k9sBAD4Akxaem86xzxW4-6lNWgs-V5P2TDH86pxWl7mT1Wwvs-XfN4O-GVS",
         role_id = 0,
 		luck = { "x25" },
         name = "Underworld 3"
@@ -94,7 +94,7 @@ local spam_messages = {
     "SECRETS GIVE-AWAY HAPPENING ģģ/ easyrift🐶",
     "X25 LUCK RIFTS AT ģģ/ easyrift🍀",
     "GET SILLY EGG AT ģģ/ easyrift🥚",
-	"UNDERWORLD RIFT ģģ/ easyrift🥚",
+	"UNDERWORLD RIFT ģģ/ easyrift🥚"
 };
 
 local join_code = string.format('game.TeleportService:TeleportToPlaceInstance(%d, "%s", game.Players.LocalPlayer)', game.PlaceId, game.JobId);
