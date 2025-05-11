@@ -1,12 +1,12 @@
 -- [[ меняй эти настройки для оптимизации ]]
 getgenv().Optimization = {
-	state = true, -- вкл/выкл
-	hide_screen = true, -- выключает прорисовку графики, бустит жесточайше фпс (вкл/выкл)
-	fps = 5
+    state = true, -- вкл/выкл
+    hide_screen = true, -- выключает прорисовку графики, бустит жесточайше фпс (вкл/выкл)
+    fps = 5
 };
 
 if getgenv().Optimization.state then
-	if setfpscap ~= nil then setfpscap(getgenv().Optimization.fps); end
+    if setfpscap ~= nil then setfpscap(getgenv().Optimization.fps); end
     UserSettings().GameSettings.MasterVolume = 0;
     settings().Rendering.QualityLevel = "Level01";
     game:GetService("RunService"):Set3dRenderingEnabled(not getgenv().Optimization.hide_screen);
@@ -67,22 +67,22 @@ local whitelisted_eggs = { -- теперь тут меняешь вебхуки 
         role_id = 0,
         name = "Dice Rift"
     },
-	["underworld-1"] = {
+    ["underworld-1"] = {
         webhook = "https://discord.com/api/webhooks/1369680321729138718/s6R5cyeB3k9sBAD4Akxaem86xzxW4-6lNWgs-V5P2TDH86pxWl7mT1Wwvs-XfN4O-GVS",
         role_id = 0,
-		luck = { "x25" },
+        luck = { "x25" },
         name = "Underworld 1"
     },
-	["underworld-2"] = {
+    ["underworld-2"] = {
         webhook = "https://discord.com/api/webhooks/1369680321729138718/s6R5cyeB3k9sBAD4Akxaem86xzxW4-6lNWgs-V5P2TDH86pxWl7mT1Wwvs-XfN4O-GVS",
         role_id = 0,
-		luck = { "x25" },
+        luck = { "x25" },
         name = "Underworld 2"
     },
-	["underworld-3"] = {
+    ["underworld-3"] = {
         webhook = "https://discord.com/api/webhooks/1369680321729138718/s6R5cyeB3k9sBAD4Akxaem86xzxW4-6lNWgs-V5P2TDH86pxWl7mT1Wwvs-XfN4O-GVS",
         role_id = 0,
-		luck = { "x25" },
+        luck = { "x25" },
         name = "Underworld 3"
     }
 };
@@ -94,18 +94,18 @@ local spam_messages = {
     "SECRETS GIVE-AWAY HAPPENING ģģ/ easyrift🐶",
     "X25 LUCK RIFTS AT ģģ/ easyrift🍀",
     "GET SILLY EGG AT ģģ/ easyrift🥚",
-	"UNDERWORLD RIFT ģģ/ easyrift🥚"
+    "UNDERWORLD RIFT ģģ/ easyrift🥚"
 };
 
 local join_code = string.format('game.TeleportService:TeleportToPlaceInstance(%d, "%s", game.Players.LocalPlayer)', game.PlaceId, game.JobId);
 local join_link = string.format('https://www.roblox.com/games/start?placeId=16302670534&launchData=%d/%s', game.PlaceId, game.JobId);
 
 local parse_time = function(text)
-	text = string.lower(string.gsub(text, "^%s*(.-)%s*$", "%1"));
+    text = string.lower(string.gsub(text, "^%s*(.-)%s*$", "%1"));
     local number, unit = string.match(text, "(%d+)%s*(%a+)");
     if number == nil or unit == nil then 
-		return 0;
-	end
+        return 0;
+    end
     
     number = tonumber(number);
     
@@ -121,48 +121,110 @@ local parse_time = function(text)
 end
 
 local time_to_discorddate = function(time_)
-	return string.format("<t:%d:R>", time_);
+    return string.format("<t:%d:R>", time_);
 end
 
 local request = (syn ~= nil and syn.request) or (http ~= nil and http.request) or (fluxus ~= nil and fluxus.request) or http_request or request;
 local notify = function(webhook, data)
-	return request({Url = webhook, Body = game:GetService("HttpService"):JSONEncode(data), Method = "POST", Headers = { ['content-type'] = "application/json" }});
+    return request({Url = webhook, Body = game:GetService("HttpService"):JSONEncode(data), Method = "POST", Headers = { ['content-type'] = "application/json" }});
 end
 
+-- Переменная для отслеживания последнего времени смены сервера
+local lastServerHopTime = tick()
+
 local serverhop = function()
-	local req = request({
-		Url = string.format("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Desc&limit=100&excludeFullGames=true", game.PlaceId)
-	})
-	
-	local success, body = pcall(function()
-		return game:GetService("HttpService"):JSONDecode(req.Body)
-	end)
-	
-	if success and body and body.data then
-		local servers = {}
-		
-		for _, server in pairs(body.data) do
-			if server.playing < server.maxPlayers and server.id ~= game.JobId then
-				table.insert(servers, server)
-			end
-		end
-		
-		if #servers > 0 then
-			local selectedServer = servers[math.random(1, #servers)];
-			game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, selectedServer.id, local_player);
-		else
-			repeat
-				game:GetService("TeleportService"):Teleport(game.PlaceId, local_player);
-				task.wait(10);
-			until game:FindFirstChild("NetworkClient") ~= nil;
-		end
-	else
-		repeat
-            game:GetService("TeleportService"):Teleport(game.PlaceId, local_player);
-            task.wait(10);
-        until game:FindFirstChild("NetworkClient") ~= nil;
-	end
+    print("Attempting server hop...")
+    
+    -- Защита от слишком частого вызова
+    if tick() - lastServerHopTime < 10 then
+        print("Server hop attempted too soon, cancelling")
+        return false
+    end
+    
+    lastServerHopTime = tick()
+    
+    local req = request({
+        Url = string.format("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Desc&limit=100&excludeFullGames=true", game.PlaceId)
+    })
+    
+    local success, body = pcall(function()
+        return game:GetService("HttpService"):JSONDecode(req.Body)
+    end)
+    
+    if success and body and body.data then
+        local servers = {}
+        
+        for _, server in pairs(body.data) do
+            if server.playing < server.maxPlayers and server.id ~= game.JobId then
+                table.insert(servers, server)
+            end
+        end
+        
+        if #servers > 0 then
+            print("Found servers: " .. #servers)
+            local selectedServer = servers[math.random(1, #servers)]
+            
+            -- Попытка телепортации с обработкой ошибок
+            local teleportSuccess, teleportError = pcall(function()
+                game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, selectedServer.id, local_player)
+            end)
+            
+            if not teleportSuccess then
+                print("Teleport failed: " .. tostring(teleportError))
+                -- Пробуем еще раз с другим сервером
+                if #servers > 1 then
+                    local newIndex = math.random(1, #servers)
+                    while servers[newIndex].id == selectedServer.id and #servers > 1 do
+                        newIndex = math.random(1, #servers)
+                    end
+                    selectedServer = servers[newIndex]
+                    
+                    pcall(function()
+                        game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, selectedServer.id, local_player)
+                    end)
+                end
+            end
+            
+            -- Даем время на телепортацию
+            wait(5)
+            return true
+        else
+            print("No suitable servers found, teleporting to same place")
+            pcall(function()
+                game:GetService("TeleportService"):Teleport(game.PlaceId, local_player)
+            end)
+            wait(5)
+            return true
+        end
+    else
+        print("Failed to get server list, teleporting to same place")
+        pcall(function()
+            game:GetService("TeleportService"):Teleport(game.PlaceId, local_player)
+        end)
+        wait(5)
+        return true
+    end
+    
+    return false
 end
+
+-- Отдельная функция для регулярной смены серверов
+task.spawn(function()
+    -- Сначала даем время на обнаружение рифтов
+    wait(15)
+    
+    while true do
+        print("Server hop cycle - waiting 15 seconds")
+        wait(15)
+        
+        local hopResult = serverhop()
+        
+        -- Если serverhop не удался, пытаемся снова через некоторое время
+        if not hopResult then
+            wait(5)
+        end
+    end
+end)
 
 task.spawn(function() -- anti afk (xz zachem, poidet)
     for _,v in pairs(getconnections(local_player.Idled)) do v:Disable() end
@@ -171,90 +233,136 @@ task.spawn(function() -- anti afk (xz zachem, poidet)
 end)
 
 task.spawn(function()
-	local channel = game:GetService("TextChatService"):WaitForChild("TextChannels"):WaitForChild("RBXGeneral");
-	local time = 1;
-	while task.wait() do
-		channel:SendAsync(spam_messages[Random.new(tick()):NextInteger(1, #spam_messages)]);
-		time += 2;
-		if time > 6 then
-			time = 1;
-		end
+    -- Попытаемся получить канал чата с обработкой ошибок
+    local success, channel
+    
+    success, channel = pcall(function()
+        return game:GetService("TextChatService"):WaitForChild("TextChannels", 5):WaitForChild("RBXGeneral", 5)
+    end)
+    
+    if not success or not channel then
+        print("Не удалось найти канал чата, используем альтернативный метод")
+        
+        -- Попытка использовать старую систему чата
+        pcall(function()
+            while task.wait(math.random(1, 6)) do
+                local message = spam_messages[math.random(1, #spam_messages)]
+                game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer(message, "All")
+            end
+        end)
+        return
+    end
+    
+    local time = 1
+    local randomGen = Random.new()
+    
+    while task.wait() do
+        -- Используем стабильный генератор случайных чисел
+        local messageIndex = randomGen:NextInteger(1, #spam_messages)
+        
+        pcall(function()
+            channel:SendAsync(spam_messages[messageIndex])
+        end)
+        
+        time += 2
+        if time > 6 then
+            time = 1
+        end
 
-		task.wait(time);
-	end
+        task.wait(time)
+    end
 end)
 
 do
-	for _, rift in pairs(rifts:GetChildren()) do
-		if not rift:IsA("Model") or not whitelisted_eggs[rift.Name] then
-			continue;
-		end
+    for _, rift in pairs(rifts:GetChildren()) do
+        if not rift:IsA("Model") or not whitelisted_eggs[rift.Name] then
+            continue
+        end
 
-		local data = whitelisted_eggs[rift.Name];
-		local luck = "None";
-		local gui = rift:FindFirstChild("Display"):FindFirstChildOfClass("SurfaceGui");
-		if data.luck ~= nil then
-			if gui == nil then
-				repeat task.wait(); gui = rift:FindFirstChild("Display"):FindFirstChildOfClass("SurfaceGui");
-				until gui ~= nil;
-			end
-			
-			if not table.find(data.luck, gui.Icon.Luck.Text) then
-				continue;
-			end
+        local data = whitelisted_eggs[rift.Name]
+        local luck = "None"
+        local gui
+        
+        pcall(function()
+            gui = rift:FindFirstChild("Display"):FindFirstChildOfClass("SurfaceGui")
+        end)
+        
+        if data.luck ~= nil then
+            if gui == nil then
+                pcall(function()
+                    repeat task.wait(0.1) 
+                        gui = rift:FindFirstChild("Display"):FindFirstChildOfClass("SurfaceGui")
+                    until gui ~= nil or task.wait(5)
+                end)
+            end
+            
+            -- Проверяем, что GUI существует и имеет необходимые дочерние элементы
+            if gui and gui:FindFirstChild("Icon") and gui.Icon:FindFirstChild("Luck") then
+                if not table.find(data.luck, gui.Icon.Luck.Text) then
+                    continue
+                end
 
-			luck = gui.Icon.Luck.Text;
-		end
+                luck = gui.Icon.Luck.Text
+            else
+                print("Rift GUI not properly loaded for: " .. rift.Name)
+                continue
+            end
+        end
 
-		local time = os.time() + parse_time(gui.Timer.Text);
-		local discord_time = time_to_discorddate(time);
-		local height = math.floor(rift:GetPivot().Position.Y) - 4;
-		local message = {
-			['content'] = string.format("<@%d>", data.role_id),
-			['embeds'] = {
-				{ 
-					['title'] = string.format("**%s has been found!**", data.name), 
-					['fields'] = {
-						{
-							['name'] = "**⏲ Expires in**",
-							['value'] = discord_time,
-							['inline'] = true
-						},
-						{
-							['name'] = "**📏 Height**",
-							['value'] = string.format("`%d`", height),
-							['inline'] = true
-						},
-						{
-							['name'] = "**👤 Players**",
-							['value'] = string.format("`%d`", #players:GetPlayers()),
-							['inline'] = true
-						},
-						{
-							['name'] = "**🍀 Luck**",
-							['value'] = string.format("`%s`", luck)
-						},
-						{
-							['name'] = "**🔗 Join link**",
-							['value'] = join_link
-						},
-						{
-							['name'] = "**👨‍💻 Join script**",
-							['value'] = string.format("```%s```", join_code)
-						}
-					},
-					['color'] = 4508791,
-					['timestamp'] = DateTime.now():ToIsoDate()
-				}
-			}
-		};
+        -- Проверка безопасного доступа к GUI
+        if not gui or not gui:FindFirstChild("Timer") then
+            print("Timer element not found for: " .. rift.Name)
+            continue
+        end
 
-		notify(data.webhook, message);
-	end
-wait(15);
-	serverhop();
+        local time = os.time() + parse_time(gui.Timer.Text)
+        local discord_time = time_to_discorddate(time)
+        local height = math.floor(rift:GetPivot().Position.Y) - 4
+        local message = {
+            ['content'] = string.format("<@%d>", data.role_id),
+            ['embeds'] = {
+                { 
+                    ['title'] = string.format("**%s has been found!**", data.name), 
+                    ['fields'] = {
+                        {
+                            ['name'] = "**⏲ Expires in**",
+                            ['value'] = discord_time,
+                            ['inline'] = true
+                        },
+                        {
+                            ['name'] = "**📏 Height**",
+                            ['value'] = string.format("`%d`", height),
+                            ['inline'] = true
+                        },
+                        {
+                            ['name'] = "**👤 Players**",
+                            ['value'] = string.format("`%d`", #players:GetPlayers()),
+                            ['inline'] = true
+                        },
+                        {
+                            ['name'] = "**🍀 Luck**",
+                            ['value'] = string.format("`%s`", luck)
+                        },
+                        {
+                            ['name'] = "**🔗 Join link**",
+                            ['value'] = join_link
+                        },
+                        {
+                            ['name'] = "**👨‍💻 Join script**",
+                            ['value'] = string.format("```%s```", join_code)
+                        }
+                    },
+                    ['color'] = 4508791,
+                    ['timestamp'] = DateTime.now():ToIsoDate()
+                }
+            }
+        }
+
+        notify(data.webhook, message)
+    end
 end
 
 game:GetService("CoreGui"):FindFirstChild("RobloxPromptGui"):FindFirstChild("promptOverlay").ChildAdded:Connect(function(child) -- при кике игрой
-    serverhop();
+    print("Kick detected, server hopping...")
+    serverhop()
 end)
