@@ -258,7 +258,7 @@ do
         local discord_time = time_to_discorddate(time);
         local height = math.floor(rift:GetPivot().Position.Y) - 4;
         local message = {
-            ['content'] = string.format("<@%d>", data.role_id),
+            ['content'] = string.format("<@&%d>", data.role_id),
             ['embeds'] = {
                 { 
                     ['title'] = string.format("**%s has been found!**", data.name), 
