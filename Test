@@ -7,7 +7,7 @@ getgenv().Optimization = {
 
 -- Настройка серверхопа каждые 2 минуты
 getgenv().ServerHopSettings = {
-    interval = 120, -- 2 минуты в секундах
+    interval = 15, -- 2 минуты в секундах
     last_hop_time = os.time() -- время последнего серверхопа
 };
 
