@@ -1,12 +1,12 @@
 -- [[ меняй эти настройки для оптимизации ]]
 getgenv().Optimization = {
-	state = true, -- вкл/выкл
-	hide_screen = true, -- выключает прорисовку графики, бустит жесточайше фпс (вкл/выкл)
-	fps = 5
+    state = true, -- вкл/выкл
+    hide_screen = true, -- выключает прорисовку графики, бустит жесточайше фпс (вкл/выкл)
+    fps = 5
 };
 
 if getgenv().Optimization.state then
-	if setfpscap ~= nil then setfpscap(getgenv().Optimization.fps); end
+    if setfpscap ~= nil then setfpscap(getgenv().Optimization.fps); end
     UserSettings().GameSettings.MasterVolume = 0;
     settings().Rendering.QualityLevel = "Level01";
     game:GetService("RunService"):Set3dRenderingEnabled(not getgenv().Optimization.hide_screen);
@@ -14,84 +14,107 @@ end
 
 local players = game:GetService("Players");
 local local_player = players.LocalPlayer;
-local rifts = workspace:FindFirstChild("Rendered"):FindFirstChild("Rifts");
+
+-- Исправление: добавляю ожидание и проверки на nil
+local rifts
+local function getRifts()
+    local rendered = workspace:FindFirstChild("Rendered")
+    if rendered then
+        rifts = rendered:FindFirstChild("Rifts")
+    end
+    return rifts ~= nil
+end
+
+-- Пробуем найти рифты с задержкой
+repeat
+    task.wait(2) -- Ожидание для загрузки необходимых компонентов
+    print("Waiting for Rifts to load...")
+until getRifts()
+
 local whitelisted_eggs = { -- теперь тут меняешь вебхуки НА КАЖДОЕ ЯЙЦО/СУНДУК, в luck через запятую в кавычках прописываешь множитель удачи
     ["rainbow-egg"] = {
         webhook = "https://discord.com/api/webhooks/1369680016367161465/ytWtBI3H3EKVrjifey0KMsJ05wEtuy1cdMV7EvJ5OX6cb128k36s17sS8EYM7pCXkxkg",
-		role_id = 0,
-		luck = { "x25" },
-		name = "Rainbow Egg"
+        role_id = 0,
+        luck = { "x25" },
+        name = "Rainbow Egg"
     },
     ["nightmare-egg"] = {
         webhook = "https://discord.com/api/webhooks/1369679913308655828/es2UQtG9m_FY_aYotNaVKpFNwDXj0IOakFJg3g8lQ107fAHPJWoUqvU_1_RLEpCGUmIJ",
-		role_id = 0,
-		luck = { "x25" },
-		name = "Nightmare Egg"
+        role_id = 0,
+        luck = { "x25" },
+        name = "Nightmare Egg"
     },
     ["void-egg"] = {
         webhook = "https://discord.com/api/webhooks/1369680094322364446/vkkzcYcVY30Tb-D2MRZMrQbR3d2U_0YCdevjgPR2QTaEjFcFs8b7uZbEi-C5u60Bum6N",
-		role_id = 0,
-		luck = { "x25" },
-		name = "Void Egg"
+        role_id = 0,
+        luck = { "x25" },
+        name = "Void Egg"
     },
     ["royal-chest"] = {
         webhook = "https://discord.com/api/webhooks/1369320116969541702/217cjweQ3Aga1IwwBzClwuNpe2KoXRKOq2IJMCV9sgzlEpd9iYHH2UJ89IT4qq8smumE",
-		role_id = 0,
-		name = "Royal Chest"
+        role_id = 0,
+        name = "Royal Chest"
     },
     ["bubble-rift"] = {
         webhook = "https://discord.com/api/webhooks/1369680404487077958/pNTDbV_qBHqzTKXrxagTlqMyFgc13qmtRha8ca1Fkn9AdlnFgjT977lDU9A8Tavw1Ju9",
-		role_id = 0,
-		name = "Bubble Rifft"
-    },
-    ["silly-egg"] = {
-        webhook = "https://discord.com/api/webhooks/1369679726079250556/x9d_fCkwW-oLKaBE1yQxGenYnkVt3n_HgolUed6-xLRyVvh5MQED22AX8beYs4mSnwud",
-		role_id = 0,
-		luck = { "x10" },
-		name = "Silly Egg"
+        role_id = 0,
+        name = "Bubble Rifft"
     },
     ["mining-egg"] = {
         webhook = "https://discord.com/api/webhooks/1369680163113140354/KSzLYRiJMmYeeGOv4aSekxlVxrxihddZrvyJ_AfAtwDZsLCCYwXMvYq7HrEfP1N6tJjH",
-		role_id = 0,
-		luck = { "x25" },
-		name = "Mining Egg"
+        role_id = 0,
+        luck = { "x25" },
+        name = "Mining Egg"
     },
     ["cyber-egg"] = {
         webhook = "https://discord.com/api/webhooks/1369680252145504256/OEFlHbKAzOuz6kZ97gcgsNyDrBR6wMBNlwiaIXWVNTeXUM5yIDLPGstTawfPE4Lx6a6R",
-		role_id = 0,
-		luck = { "x25" },
-		name = "Cyber Egg"
+        role_id = 0,
+        luck = { "x25" },
+        name = "Cyber Egg"
     },
-    ["game-egg"] = {
-        webhook = "",
-		role_id = 0,
-		luck = { "x25" },
-		name = "Game Egg"
-    },
-	["dice-chest"] = {
+    ["dice-chest"] = {
         webhook = "https://discord.com/api/webhooks/1369680321729138718/s6R5cyeB3k9sBAD4Akxaem86xzxW4-6lNWgs-V5P2TDH86pxWl7mT1Wwvs-XfN4O-GVS",
-		role_id = 0,
-		name = "Dice Chest"
+        role_id = 0,
+        name = "Dice Chest"
+    },
+    ["underworld-1"] = {
+        webhook = "https://discord.com/api/webhooks/1371074619645235243/u_0v1rptBiojPUlQSSwaA7zoIbryx-4qEK1JZaaJkKd82T9Mo4VWMN3hyD6beszMNcYY",
+        role_id = 0,
+        luck = { "x25" },
+        name = "Underworld 1"
+    },
+    ["underworld-2"] = {
+        webhook = "https://discord.com/api/webhooks/1371074619645235243/u_0v1rptBiojPUlQSSwaA7zoIbryx-4qEK1JZaaJkKd82T9Mo4VWMN3hyD6beszMNcYY",
+        role_id = 0,
+        luck = { "x25" },
+        name = "Underworld 2"
+    },
+    ["underworld-3"] = {
+        webhook = "https://discord.com/api/webhooks/1371074619645235243/u_0v1rptBiojPUlQSSwaA7zoIbryx-4qEK1JZaaJkKd82T9Mo4VWMN3hyD6beszMNcYY",
+        role_id = 0,
+        luck = { "x25" },
+        name = "Underworld 3"
     }
 };
 local spam_messages = {
-	"Best Rift Finder = ģģ/ easyrift 🔥",
-	"Silly Egg is found! ģģ/ easyrift 🔥",
-	"Best Pet Shop = ģģ/ easyrift 🔥",
-	"REACH THE LEADERBOARDS USING ğğ/ easyrift 🏆",
-	"SECRETS GIVE-AWAY HAPPENING ģģ/ easyrift 🌟",
-	"X25 LUCK RIFTS AT ģģ/ easyrift 🍀",
-	"GET SILLY EGG AT ģģ/ easyrift 🥚"
+    "Best Rift Finder = ģģ/ easyrift 🔥",
+    "Silly Egg is found! ģģ/ easyrift 🔥",
+    "Best Pet Shop = ģģ/ easyrift 🔥",
+    "REACH THE LEADERBOARDS USING ğğ/ easyrift 🏆",
+    "SECRETS GIVE-AWAY HAPPENING ģģ/ easyrift 🌟",
+    "X25 LUCK RIFTS AT ģģ/ easyrift 🍀",
+    "GET SILLY EGG AT ģģ/ easyrift 🥚",
+    "UNDERWORLD RIFT ģģ/ easyrift 🥚"
 };
 
 local join_link = string.format('https://www.roblox.com/games/start?placeId=16302670534&launchData=%d/%s', game.PlaceId, game.JobId);
 
 local parse_time = function(text)
-	text = string.lower(string.gsub(text, "^%s*(.-)%s*$", "%1"));
+    text = string.lower(string.gsub(text, "^%s*(.-)%s*$", "%1"));
     local number, unit = string.match(text, "(%d+)%s*(%a+)");
     if number == nil or unit == nil then 
-		return 0;
-	end
+        return 0;
+    end
     
     number = tonumber(number);
     
@@ -107,70 +130,68 @@ local parse_time = function(text)
 end
 
 local time_to_discorddate = function(time_)
-	return string.format("<t:%d:R>", time_);
+    return string.format("<t:%d:R>", time_);
 end
 
 local request = (syn ~= nil and syn.request) or (http ~= nil and http.request) or (fluxus ~= nil and fluxus.request) or http_request or request;
 local notify = function(webhook, data)
-	return request({Url = webhook, Body = game:GetService("HttpService"):JSONEncode(data), Method = "POST", Headers = { ['content-type'] = "application/json" }});
-end
-
-local all_ids = {};
-local foundAnything = "";
-local actualHour = os.date("!*t").hour;
-local Deleted = false;
-local servers_file = pcall(function()
-    all_ids = game:GetService('HttpService'):JSONDecode(readfile("saved_servers.json"));
-end)
-if not servers_file then
-    table.insert(all_ids, actualHour);
-    writefile("saved_servers.json", game:GetService('HttpService'):JSONEncode(all_ids));
+    return request({Url = webhook, Body = game:GetService("HttpService"):JSONEncode(data), Method = "POST", Headers = { ['content-type'] = "application/json" }});
 end
 
 local serverhop = function()
-local Site;
-    if foundAnything == "" then
-        Site = game.HttpService:JSONDecode(game:HttpGet('https://games.roblox.com/v1/games/' .. game.PlaceId .. '/servers/Public?sortOrder=Asc&limit=100'))
-    else
-        Site = game.HttpService:JSONDecode(game:HttpGet('https://games.roblox.com/v1/games/' .. game.PlaceId .. '/servers/Public?sortOrder=Asc&limit=100&cursor=' .. foundAnything))
-    end
-    local ID = ""
-    if Site.nextPageCursor and Site.nextPageCursor ~= "null" and Site.nextPageCursor ~= nil then
-        foundAnything = Site.nextPageCursor
-    end
-    local num = 0;
-    for i,v in pairs(Site.data) do
-        local Possible = true
-        ID = tostring(v.id)
-        if tonumber(v.maxPlayers) > tonumber(v.playing) then
-            for _,Existing in pairs(all_ids) do
-                if num ~= 0 then
-                    if ID == tostring(Existing) then
-                        Possible = false
-                    end
-                else
-                    if tonumber(actualHour) ~= tonumber(Existing) then
-                        local delFile = pcall(function()
-                            delfile("saved_servers.json")
-                            all_ids = {}
-                            table.insert(all_ids, actualHour)
-                        end)
-                    end
-                end
-                num = num + 1
-            end
-            if Possible == true then
-                table.insert(all_ids, ID)
-                wait()
-                pcall(function()
-                    writefile("saved_servers.json", game:GetService('HttpService'):JSONEncode(all_ids))
-                    wait()
-                    game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, ID, local_player)
-                end)
-                wait(4)
-				break;
+    wait(15);
+
+    local file = "serverhop_history.json";
+    local history = {};
+    local current_time = os.time();
+    
+    -- Load history if file exists
+    if pcall(function() readfile(file) end) then
+        history = game:GetService("HttpService"):JSONDecode(readfile(file))
+        
+        local new_history = {};
+        for serverId, jt in pairs(history) do
+            if current_time - jt < 540 then
+                new_history[serverId] = jt;
             end
         end
+
+        history = new_history;
+    end
+    
+    local req = request({
+        Url = string.format("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Desc&limit=100&excludeFullGames=true", game.PlaceId);
+    })
+    
+    local success, body = pcall(function()
+        return game:GetService("HttpService"):JSONDecode(req.Body);
+    end)
+    
+    if success and body and body.data then
+        local servers = {};
+        
+        for _, server in pairs(body.data) do
+            if server.playing < server.maxPlayers and server.id ~= game.JobId and not history[server.id] then
+                table.insert(servers, server);
+            end
+        end
+        
+        if #servers > 0 then
+            local selected_server = servers[math.random(1, #servers)];
+            history[selected_server.id] = current_time;
+            writefile(file, game:GetService("HttpService"):JSONEncode(history));
+            game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, selected_server.id, local_player);
+        else
+            repeat
+                game:GetService("TeleportService"):Teleport(game.PlaceId, local_player);
+                task.wait(20);
+            until game:FindFirstChild("NetworkClient") ~= nil;
+        end
+    else
+        repeat
+            game:GetService("TeleportService"):Teleport(game.PlaceId, local_player);
+            task.wait(20);
+        until game:FindFirstChild("NetworkClient") ~= nil;
     end
 end
 
@@ -181,92 +202,103 @@ task.spawn(function() -- anti afk (xz zachem, poidet)
 end)
 
 task.spawn(function()
-	local channel = game:GetService("TextChatService"):WaitForChild("TextChannels"):WaitForChild("RBXGeneral");
-	local time = 1;
-	while task.wait() do
-		channel:SendAsync(spam_messages[Random.new(tick()):NextInteger(1, #spam_messages)]);
-		time += 2;
-		if time > 6 then
-			time = 1;
-		end
+    local channel = game:GetService("TextChatService"):WaitForChild("TextChannels"):WaitForChild("RBXGeneral");
+    local time = 1;
+    while task.wait() do
+        channel:SendAsync(spam_messages[Random.new(tick()):NextInteger(1, #spam_messages)]);
+        time += 2;
+        if time > 6 then
+            time = 1;
+        end
 
-		task.wait(time);
-	end
+        task.wait(time);
+    end
 end)
 
 do
-	for _, rift in pairs(rifts:GetChildren()) do
-		if not rift:IsA("Model") or not whitelisted_eggs[rift.Name] then
-			continue;
-		end
+    for _, rift in pairs(rifts:GetChildren()) do
+        if not rift:IsA("Model") or not whitelisted_eggs[rift.Name] then
+            continue;
+        end
 
-		local data = whitelisted_eggs[rift.Name];
-		local luck = "None";
-		local gui = rift:FindFirstChild("Display"):FindFirstChildOfClass("SurfaceGui");
-		if data.luck ~= nil then
-			if gui == nil then
-				repeat task.wait(); gui = rift:FindFirstChild("Display"):FindFirstChildOfClass("SurfaceGui");
-				until gui ~= nil;
-			end
-			
-			if not table.find(data.luck, gui.Icon.Luck.Text) then
-				continue;
-			end
+        local data = whitelisted_eggs[rift.Name];
+        local luck = "None";
+        local gui
+        
+        -- Исправление: добавление проверок на nil и ожидания загрузки
+        local display = rift:FindFirstChild("Display")
+        if display then
+            gui = display:FindFirstChildOfClass("SurfaceGui")
+            if data.luck ~= nil then
+                if gui == nil then
+                    repeat 
+                        task.wait(0.5)
+                        gui = display:FindFirstChildOfClass("SurfaceGui")
+                    until gui ~= nil or task.wait(5) -- таймаут 5 секунд на случай, если GUI не загрузится
+                end
+                
+                if gui and gui:FindFirstChild("Icon") and gui.Icon:FindFirstChild("Luck") then
+                    if not table.find(data.luck, gui.Icon.Luck.Text) then
+                        continue
+                    end
+                    luck = gui.Icon.Luck.Text
+                else
+                    continue -- Пропускаем если нет нужных компонентов
+                end
+            end
+        else
+            continue -- Пропускаем если нет Display
+        end
+        
+        if not gui or not gui:FindFirstChild("Timer") then
+            continue -- Пропускаем если нет таймера
+        end
 
-			luck = gui.Icon.Luck.Text;
-		end
+        local time = os.time() + parse_time(gui.Timer.Text);
+        local discord_time = time_to_discorddate(time);
+        local height = math.floor(rift:GetPivot().Position.Y) - 4;
+        local message = {
+            ['content'] = string.format("<@%d>", data.role_id),
+            ['embeds'] = {
+                { 
+                    ['title'] = string.format("**%s has been found!**", data.name), 
+                    ['fields'] = {
+                        {
+                            ['name'] = "**⏲ Expires in**",
+                            ['value'] = discord_time,
+                            ['inline'] = true
+                        },
+                        {
+                            ['name'] = "**📏 Height**",
+                            ['value'] = string.format("`%d`", height),
+                            ['inline'] = true
+                        },
+                        {
+                            ['name'] = "**👤 Players**",
+                            ['value'] = string.format("`%d`", #players:GetPlayers()),
+                            ['inline'] = true
+                        },
+                        {
+                            ['name'] = "**🍀 Luck**",
+                            ['value'] = string.format("`%s`", luck)
+                        },
+                        {
+                            ['name'] = "**🔗 Join link**",
+                            ['value'] = join_link
+                        }
+                    },
+                    ['color'] = 4508791,
+                    ['timestamp'] = DateTime.now():ToIsoDate()
+                }
+            }
+        };
 
-		local time = os.time() + parse_time(gui.Timer.Text);
-		local discord_time = time_to_discorddate(time);
-		local height = math.floor(rift:GetPivot().Position.Y) - 4;
-		local message = {
-			['content'] = string.format("<@%d>", data.role_id),
-			['embeds'] = {
-				{ 
-					['title'] = string.format("**%s has been found!**", data.name), 
-					['fields'] = {
-						{
-							['name'] = "**⏲ Expires in**",
-							['value'] = discord_time,
-							['inline'] = true
-						},
-						{
-							['name'] = "**📏 Height**",
-							['value'] = string.format("`%d`", height),
-							['inline'] = true
-						},
-						{
-							['name'] = "**👤 Players**",
-							['value'] = string.format("`%d`", #players:GetPlayers()),
-							['inline'] = true
-						},
-						{
-							['name'] = "**🍀 Luck**",
-							['value'] = string.format("`%s`", luck)
-						},
-						{
-							['name'] = "**🔗 Join link**",
-							['value'] = join_link
-						}
-					},
-					['color'] = 4508791,
-					['timestamp'] = DateTime.now():ToIsoDate()
-				}
-			}
-		};
+        notify(data.webhook, message);
+    end
 
-		notify(data.webhook, message);
-	end
-wait(15)
-	serverhop();
-	if foundAnything ~= "" then
-		serverhop();
-	end
+    serverhop();
 end
 
 game:GetService("CoreGui"):FindFirstChild("RobloxPromptGui"):FindFirstChild("promptOverlay").ChildAdded:Connect(function(child) -- при кике игрой
     serverhop();
-	if foundAnything ~= "" then
-		serverhop();
-	end
 end)
