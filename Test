@@ -35,21 +35,46 @@ until getRifts()
 local cache_file = "rifts_cache.json"
 local rifts_cache = {}
 
+-- Функция для очистки кэша
+local function cleanCache()
+    local current_time = os.time()
+    local new_cache = {}
+    local removed_count = 0
+    
+    for rift_id, timestamp in pairs(rifts_cache) do
+        if current_time - timestamp < 540 then -- 9 минут (540 секунд)
+            new_cache[rift_id] = timestamp
+        else
+            removed_count = removed_count + 1
+        end
+    end
+    
+    rifts_cache = new_cache
+    
+    -- Сохраняем обновленный кэш
+    pcall(function()
+        writefile(cache_file, game:GetService("HttpService"):JSONDecode(rifts_cache))
+    end)
+    
+    print("Cache cleaned: Removed", removed_count, "items. Current cache size:", #rifts_cache)
+end
+
 -- Загружаем кэш, если он существует
 if pcall(function() readfile(cache_file) end) then
     pcall(function()
         rifts_cache = game:GetService("HttpService"):JSONDecode(readfile(cache_file))
     end)
-    -- Очистка старых записей (старше 1 часа)
-    local current_time = os.time()
-    local new_cache = {}
-    for rift_id, timestamp in pairs(rifts_cache) do
-        if current_time - timestamp < 3600 then -- 1 час
-            new_cache[rift_id] = timestamp
-        end
-    end
-    rifts_cache = new_cache
+    cleanCache() -- Очищаем кэш при загрузке
 end
+
+-- Запускаем автоматическую очистку кэша каждые 9 минут
+task.spawn(function()
+    while true do
+        task.wait(540) -- 9 минут
+        print("Scheduled cache cleanup...")
+        cleanCache()
+    end
+end)
 
 local whitelisted_eggs = { -- теперь тут меняешь вебхуки НА КАЖДОЕ ЯЙЦО/СУНДУК, в luck через запятую в кавычках прописываешь множитель удачи
     ["rainbow-egg"] = {
