@@ -5,6 +5,12 @@ getgenv().Optimization = {
     fps = 3
 };
 
+-- Настройка серверхопа каждые 2 минуты
+getgenv().ServerHopSettings = {
+    interval = 120, -- 2 минуты в секундах
+    last_hop_time = os.time() -- время последнего серверхопа
+};
+
 if getgenv().Optimization.state then
     if setfpscap ~= nil then setfpscap(getgenv().Optimization.fps); end
     UserSettings().GameSettings.MasterVolume = 0;
@@ -53,10 +59,10 @@ local function cleanCache()
     
     -- Сохраняем обновленный кэш
     pcall(function()
-        writefile(cache_file, game:GetService("HttpService"):JSONDecode(rifts_cache))
+        writefile(cache_file, game:GetService("HttpService"):JSONEncode(rifts_cache))
     end)
     
-    print("Cache cleaned: Removed", removed_count, "items. Current cache size:", #rifts_cache)
+    print("Cache cleaned: Removed", removed_count, "items. Current cache size:", table.getn(rifts_cache))
 end
 
 -- Загружаем кэш, если он существует
@@ -192,7 +198,11 @@ local notify = function(webhook, data)
 end
 
 local serverhop = function()
-    wait(15);
+    -- Обновляем время последнего серверхопа
+    getgenv().ServerHopSettings.last_hop_time = os.time()
+    print("Initiating server hop at:", os.date("%H:%M:%S", getgenv().ServerHopSettings.last_hop_time))
+    
+    wait(5);
 
     local file = "serverhop_history.json";
     local history = {};
@@ -265,6 +275,20 @@ task.spawn(function()
         end
 
         task.wait(time);
+    end
+end)
+
+-- Серверхоп каждые 2 минуты
+task.spawn(function()
+    while true do
+        task.wait(5) -- Проверяем каждые 5 секунд
+        local current_time = os.time()
+        local elapsed_time = current_time - getgenv().ServerHopSettings.last_hop_time
+        
+        if elapsed_time >= getgenv().ServerHopSettings.interval then
+            print("Server hop interval reached:", elapsed_time, "seconds")
+            serverhop()
+        end
     end
 end)
 
@@ -386,7 +410,7 @@ do
     
     print("Rifts found:", rifts_found, "Webhooks sent:", rifts_sent)
     
-    serverhop();
+    -- Не делаем моментальный серверхоп здесь, так как работает таймер
 end
 
 game:GetService("CoreGui"):FindFirstChild("RobloxPromptGui"):FindFirstChild("promptOverlay").ChildAdded:Connect(function(child) -- при кике игрой
