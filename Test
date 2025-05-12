@@ -31,6 +31,26 @@ repeat
     print("Waiting for Rifts to load...")
 until getRifts()
 
+-- Система для предотвращения дублирования вебхуков
+local cache_file = "rifts_cache.json"
+local rifts_cache = {}
+
+-- Загружаем кэш, если он существует
+if pcall(function() readfile(cache_file) end) then
+    pcall(function()
+        rifts_cache = game:GetService("HttpService"):JSONDecode(readfile(cache_file))
+    end)
+    -- Очистка старых записей (старше 1 часа)
+    local current_time = os.time()
+    local new_cache = {}
+    for rift_id, timestamp in pairs(rifts_cache) do
+        if current_time - timestamp < 3600 then -- 1 час
+            new_cache[rift_id] = timestamp
+        end
+    end
+    rifts_cache = new_cache
+end
+
 local whitelisted_eggs = { -- теперь тут меняешь вебхуки НА КАЖДОЕ ЯЙЦО/СУНДУК, в luck через запятую в кавычках прописываешь множитель удачи
     ["rainbow-egg"] = {
         webhook = "https://discord.com/api/webhooks/1369680016367161465/ytWtBI3H3EKVrjifey0KMsJ05wEtuy1cdMV7EvJ5OX6cb128k36s17sS8EYM7pCXkxkg",
@@ -224,11 +244,16 @@ task.spawn(function()
 end)
 
 do
+    local rifts_found = 0 -- счетчик найденных рифтов
+    local rifts_sent = 0  -- счетчик отправленных вебхуков
+    
     for _, rift in pairs(rifts:GetChildren()) do
         if not rift:IsA("Model") or not whitelisted_eggs[rift.Name] then
             continue;
         end
-
+        
+        rifts_found = rifts_found + 1
+        
         local data = whitelisted_eggs[rift.Name];
         local luck = "None";
         local gui
@@ -262,12 +287,26 @@ do
             continue -- Пропускаем если нет таймера
         end
 
+        -- Создаем уникальный ID для рифта на основе его типа и координат (с округлением)
+        local position = rift:GetPivot().Position
+        local rift_id = string.format("%s_%d_%d_%d", 
+            rift.Name, 
+            math.floor(position.X), 
+            math.floor(position.Y), 
+            math.floor(position.Z))
+        
+        -- Проверяем, был ли этот рифт уже найден и отправлен ранее
+        if rifts_cache[rift_id] then
+            print("Rift already reported:", rift_id)
+            continue
+        end
+        
         local time = os.time() + parse_time(gui.Timer.Text);
         local discord_time = time_to_discorddate(time);
         local height = math.floor(rift:GetPivot().Position.Y) - 4;
         local message = {
             -- Исправление формата упоминания роли - прямое использование без форматирования
-            ['content'] = "<@&" .. data.role_id .. ">",
+            ['content'] = data.role_id and data.role_id ~= "" and ("<@&" .. data.role_id .. ">") or "",
             ['allowed_mentions'] = {
                 ['parse'] = {"roles"}
             },
@@ -305,9 +344,23 @@ do
             }
         };
 
+        -- Сохраняем рифт в кэше с текущим временем
+        rifts_cache[rift_id] = os.time()
+        
+        -- Сохраняем обновленный кэш
+        pcall(function()
+            writefile(cache_file, game:GetService("HttpService"):JSONEncode(rifts_cache))
+        end)
+        
         notify(data.webhook, message);
+        rifts_sent = rifts_sent + 1
+        
+        -- Добавляем небольшую задержку между отправками вебхуков
+        task.wait(0.5)
     end
-
+    
+    print("Rifts found:", rifts_found, "Webhooks sent:", rifts_sent)
+    
     serverhop();
 end
 
