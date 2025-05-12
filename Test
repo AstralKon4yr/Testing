@@ -2,7 +2,7 @@
 getgenv().Optimization = {
     state = true, -- вкл/выкл
     hide_screen = true, -- выключает прорисовку графики, бустит жесточайше фпс (вкл/выкл)
-    fps = 5
+    fps = 3
 };
 
 if getgenv().Optimization.state then
