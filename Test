@@ -34,47 +34,47 @@ until getRifts()
 local whitelisted_eggs = { -- теперь тут меняешь вебхуки НА КАЖДОЕ ЯЙЦО/СУНДУК, в luck через запятую в кавычках прописываешь множитель удачи
     ["rainbow-egg"] = {
         webhook = "https://discord.com/api/webhooks/1369680016367161465/ytWtBI3H3EKVrjifey0KMsJ05wEtuy1cdMV7EvJ5OX6cb128k36s17sS8EYM7pCXkxkg",
-        role_id = 0,
+        role_id = 1371510979116007545,
         luck = { "x25" },
         name = "Rainbow Egg"
     },
     ["nightmare-egg"] = {
         webhook = "https://discord.com/api/webhooks/1369679913308655828/es2UQtG9m_FY_aYotNaVKpFNwDXj0IOakFJg3g8lQ107fAHPJWoUqvU_1_RLEpCGUmIJ",
-        role_id = 0,
+        role_id = 1371510979116007545,
         luck = { "x25" },
         name = "Nightmare Egg"
     },
     ["void-egg"] = {
         webhook = "https://discord.com/api/webhooks/1369680094322364446/vkkzcYcVY30Tb-D2MRZMrQbR3d2U_0YCdevjgPR2QTaEjFcFs8b7uZbEi-C5u60Bum6N",
-        role_id = 0,
+        role_id = 1371510979116007545,
         luck = { "x25" },
         name = "Void Egg"
     },
     ["royal-chest"] = {
         webhook = "https://discord.com/api/webhooks/1369320116969541702/217cjweQ3Aga1IwwBzClwuNpe2KoXRKOq2IJMCV9sgzlEpd9iYHH2UJ89IT4qq8smumE",
-        role_id = 0,
+        role_id = 1371510979116007545,
         name = "Royal Chest"
     },
     ["bubble-rift"] = {
         webhook = "https://discord.com/api/webhooks/1369680404487077958/pNTDbV_qBHqzTKXrxagTlqMyFgc13qmtRha8ca1Fkn9AdlnFgjT977lDU9A8Tavw1Ju9",
-        role_id = 0,
+        role_id = 1371510979116007545,
         name = "Bubble Rifft"
     },
     ["mining-egg"] = {
         webhook = "https://discord.com/api/webhooks/1369680163113140354/KSzLYRiJMmYeeGOv4aSekxlVxrxihddZrvyJ_AfAtwDZsLCCYwXMvYq7HrEfP1N6tJjH",
-        role_id = 0,
+        role_id = 1371510979116007545,
         luck = { "x25" },
         name = "Mining Egg"
     },
     ["cyber-egg"] = {
         webhook = "https://discord.com/api/webhooks/1369680252145504256/OEFlHbKAzOuz6kZ97gcgsNyDrBR6wMBNlwiaIXWVNTeXUM5yIDLPGstTawfPE4Lx6a6R",
-        role_id = 0,
+        role_id = 1371510979116007545,
         luck = { "x25" },
         name = "Cyber Egg"
     },
     ["dice-chest"] = {
         webhook = "https://discord.com/api/webhooks/1369680321729138718/s6R5cyeB3k9sBAD4Akxaem86xzxW4-6lNWgs-V5P2TDH86pxWl7mT1Wwvs-XfN4O-GVS",
-        role_id = 0,
+        role_id = 1371510979116007545,
         name = "Dice Chest"
     },
     ["underworld-1"] = {
