@@ -134,8 +134,16 @@ local time_to_discorddate = function(time_)
 end
 
 local request = (syn ~= nil and syn.request) or (http ~= nil and http.request) or (fluxus ~= nil and fluxus.request) or http_request or request;
+-- Улучшенная функция notify для отладки пингов
 local notify = function(webhook, data)
-    return request({Url = webhook, Body = game:GetService("HttpService"):JSONEncode(data), Method = "POST", Headers = { ['content-type'] = "application/json" }});
+    local response = request({
+        Url = webhook, 
+        Body = game:GetService("HttpService"):JSONEncode(data), 
+        Method = "POST", 
+        Headers = { ['content-type'] = "application/json" }
+    });
+    print("Discord webhook response:", response.StatusCode, response.StatusMessage);
+    return response;
 end
 
 local serverhop = function()
@@ -258,7 +266,8 @@ do
         local discord_time = time_to_discorddate(time);
         local height = math.floor(rift:GetPivot().Position.Y) - 4;
         local message = {
-            ['content'] = string.format("<@&%d>", data.role_id),
+            -- Исправление для упоминания роли - преобразуем ID роли в строку
+            ['content'] = string.format("<@&%s>", tostring(data.role_id)),
             ['embeds'] = {
                 { 
                     ['title'] = string.format("**%s has been found!**", data.name), 
