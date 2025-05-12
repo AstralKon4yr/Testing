@@ -57,7 +57,7 @@ local whitelisted_eggs = { -- теперь тут меняешь вебхуки 
     },
     ["bubble-rift"] = {
         webhook = "https://discord.com/api/webhooks/1369680404487077958/pNTDbV_qBHqzTKXrxagTlqMyFgc13qmtRha8ca1Fkn9AdlnFgjT977lDU9A8Tavw1Ju9",
-        role_id = "1371510979116007545",
+        role_id = "",
         name = "Bubble Rifft"
     },
     ["mining-egg"] = {
