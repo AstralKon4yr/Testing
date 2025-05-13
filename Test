@@ -152,12 +152,11 @@ local whitelisted_eggs = { -- теперь тут меняешь вебхуки 
 };
 local spam_messages = {
     "Best Rift Finder = ģģ/ easyrift 🔥",
-    "Silly Egg is found! ģģ/ easyrift 🔥",
+    "Underworld Egg is found! ģģ/ easyrift 🔥",
     "Best Pet Shop = ģģ/ easyrift 🔥",
     "REACH THE LEADERBOARDS USING ğğ/ easyrift 🏆",
     "SECRETS GIVE-AWAY HAPPENING ģģ/ easyrift 🌟",
     "X25 LUCK RIFTS AT ģģ/ easyrift 🍀",
-    "GET SILLY EGG AT ģģ/ easyrift 🥚",
     "UNDERWORLD RIFT ģģ/ easyrift 🥚"
 };
 
