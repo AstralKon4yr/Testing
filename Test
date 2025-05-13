@@ -13,7 +13,7 @@ getgenv().ServerHopSettings = {
     min_players = 2, -- минимальное количество игроков в сервере для перехода
     max_players = 10, -- максимальное количество игроков в сервере для перехода (из 50)
     force_hop = true, -- принудительный хоп, даже если обычная проверка не сработала
-    debug_mode = true, -- включить режим отладки серверхопа
+    debug_mode = false, -- выключаем режим отладки
     retry_delay = 5, -- задержка перед повторной попыткой хопа в случае ошибки
 };
 
@@ -36,18 +36,6 @@ local players = game:GetService("Players");
 local local_player = players.LocalPlayer;
 local http_service = game:GetService("HttpService")
 local teleport_service = game:GetService("TeleportService");
-
--- Отладочная функция для логирования
-local function debug_log(...)
-    if getgenv().ServerHopSettings.debug_mode then
-        local args = {...}
-        local message = "【Серверхоп】: "
-        for i, arg in ipairs(args) do
-            message = message .. tostring(arg) .. " "
-        end
-        print(message)
-    end
-end
 
 -- Исправление: добавляю ожидание и проверки на nil
 local rifts
@@ -437,7 +425,6 @@ local server_hop_failures = 0
 
 -- Улучшенная функция выбора сервера
 local function findNewServer()
-    debug_log("Поиск нового сервера...")
     local file = "serverhop_history.json";
     local history = {};
     local current_time = os.time();
@@ -463,8 +450,6 @@ local function findNewServer()
             end
 
             history = new_history;
-        else
-            debug_log("Ошибка при чтении истории серверов:", result)
         end
     end
     
@@ -473,7 +458,6 @@ local function findNewServer()
     local page_offset = math.random(0, 5) * page_size
     local sort_order = (math.random(1, 2) == 1) and "Asc" or "Desc"
     
-    debug_log("Запрашиваем список серверов...")
     local req = request({
         Url = string.format("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=%s&limit=%d&cursor=%s&excludeFullGames=true", 
             game.PlaceId,
@@ -488,7 +472,6 @@ local function findNewServer()
     end)
     
     if success and body and body.data then
-        debug_log("Получен список из", #body.data, "серверов")
         local servers = {};
         local suitable_servers = 0
         
@@ -518,8 +501,6 @@ local function findNewServer()
             end
         end
         
-        debug_log("Найдено подходящих серверов:", suitable_servers)
-        
         -- Перемешиваем серверы для лучшей рандомизации
         for i = #servers, 2, -1 do
             local j = math.random(1, i)
@@ -531,14 +512,11 @@ local function findNewServer()
             history[selected_server.id] = current_time;
             writefile(file, http_service:JSONEncode(history));
             
-            debug_log("Выбран сервер с", selected_server.playing, "игроками, ID:", selected_server.id)
             return selected_server
         else
-            debug_log("Нет подходящих серверов")
             return nil
         end
     else
-        debug_log("Ошибка при запросе списка серверов")
         return nil
     end
 end
@@ -547,77 +525,62 @@ end
 local function serverhop()
     -- Проверяем, не выполняется ли уже серверхоп
     if is_server_hopping then
-        debug_log("Серверхоп уже выполняется, пропускаем...")
         return false
     end
     
     -- Проверяем, не слишком ли часто пытаемся делать серверхоп
     local current_time = os.time()
     if current_time - last_hop_attempt < 3 then
-        debug_log("Слишком частые попытки серверхопа, пропускаем...")
         return false
     end
     
     -- Отмечаем, что серверхоп начался
     is_server_hopping = true
     last_hop_attempt = current_time
-    debug_log("Начинаем серверхоп")
     
     -- Добавляем случайную задержку для рассинхронизации аккаунтов (уменьшена для более быстрого серверхопа)
     if getgenv().ServerHopSettings.use_random_offset then
         local random_delay = math.random(1, 3) -- Уменьшено до 1-3 секунд
-        debug_log("Добавляем случайную задержку:", random_delay, "секунд")
         wait(random_delay)
     end
     
     -- Обновляем время последнего серверхопа
     getgenv().ServerHopSettings.last_hop_time = current_time
-    debug_log("Серверхоп инициирован в:", os.date("%H:%M:%S", current_time))
 
     -- Находим подходящий сервер
     local selected_server = findNewServer()
     
     -- Пробуем телепортироваться
     if selected_server then
-        debug_log("Выполняем телепортацию...")
-        
         local success = pcall(function()
             teleport_service:TeleportToPlaceInstance(game.PlaceId, selected_server.id, local_player)
         end)
         
         if success then
-            debug_log("Команда телепортации отправлена успешно")
             -- Даем 10 секунд на телепортацию
             task.delay(10, function()
-                debug_log("Проверяем, состоялась ли телепортация...")
                 if local_player and local_player.Parent then
-                    debug_log("Телепортация не удалась или заняла слишком много времени, сбрасываем флаг серверхопа")
                     is_server_hopping = false
                     server_hop_failures = server_hop_failures + 1
                     
                     -- Если было много неудачных попыток, пробуем альтернативный метод
                     if server_hop_failures >= 3 then
-                        debug_log("Слишком много неудачных попыток, пробуем альтернативный метод")
                         teleport_service:Teleport(game.PlaceId, local_player)
                     end
                 end
             end)
             return true
         else
-            debug_log("Ошибка при отправке команды телепортации")
             is_server_hopping = false
             server_hop_failures = server_hop_failures + 1
             return false
         end
     else
-        debug_log("Не удалось найти подходящий сервер, пробуем общую телепортацию")
-        
         local success = pcall(function()
             teleport_service:Teleport(game.PlaceId, local_player)
         end)
         
         if success then
-            debug_log("Общая телепортация инициирована")
             -- Аналогично даем 10 секунд
             task.delay(10, function()
                 if local_player and local_player.Parent then
@@ -626,7 +589,6 @@ local function serverhop()
             end)
             return true
         else
-            debug_log("Ошибка при выполнении общей телепортации")
             is_server_hopping = false
             return false
         end
@@ -638,7 +600,6 @@ local function safeServerhop()
     local success = serverhop()
     
     if not success and getgenv().ServerHopSettings.retry_delay > 0 then
-        debug_log("Серверхоп не удался, пробуем снова через", getgenv().ServerHopSettings.retry_delay, "секунд")
         task.delay(getgenv().ServerHopSettings.retry_delay, function()
             serverhop()
         end)
@@ -667,7 +628,6 @@ end)
 
 -- Серверхоп с таймером (основной механизм)
 task.spawn(function()
-    debug_log("Запуск таймера серверхопа")
     -- Добавляем небольшую начальную задержку
     task.wait(3)
     
@@ -676,17 +636,13 @@ task.spawn(function()
         
         -- Пропускаем проверки, если уже идет процесс серверхопа
         if is_server_hopping then
-            debug_log("Серверхоп уже выполняется, таймер пропускает итерацию")
             continue
         end
         
         local current_time = os.time()
         local elapsed_time = current_time - getgenv().ServerHopSettings.last_hop_time
         
-        debug_log("Проверка таймера серверхопа - прошло", elapsed_time, "сек. из", getgenv().ServerHopSettings.interval)
-        
         if elapsed_time >= getgenv().ServerHopSettings.interval then
-            debug_log("Время серверхопа наступило! Прошло", elapsed_time, "секунд")
             safeServerhop()
         end
     end
@@ -695,7 +651,6 @@ end)
 -- Принудительный серверхоп каждые 30 секунд, если основной механизм не сработал
 if getgenv().ServerHopSettings.force_hop then
     task.spawn(function()
-        debug_log("Запуск принудительного таймера серверхопа")
         -- Запускаем с некоторой задержкой после основного таймера
         task.wait(30)
         
@@ -707,10 +662,7 @@ if getgenv().ServerHopSettings.force_hop then
             local current_time = os.time()
             local elapsed_time = current_time - getgenv().ServerHopSettings.last_hop_time
             
-            debug_log("Проверка принудительного серверхопа - прошло", elapsed_time, "сек.")
-            
             if elapsed_time >= 45 then -- Если прошло более 45 секунд без хопа
-                debug_log("ПРИНУДИТЕЛЬНЫЙ СЕРВЕРХОП! Прошло", elapsed_time, "секунд без хопа")
                 safeServerhop()
             end
         end
@@ -830,16 +782,12 @@ end
 
 -- Обработка кика от игры
 game:GetService("CoreGui"):FindFirstChild("RobloxPromptGui"):FindFirstChild("promptOverlay").ChildAdded:Connect(function(child)
-    debug_log("Обнаружено сообщение от игры (возможно кик), инициируем серверхоп")
     safeServerhop()
 end)
 
 -- Запуск немедленного хопа, если не были найдены интересующие нас рифты
 if not is_server_hopping then
     task.delay(5, function()
-        debug_log("Запуск начального серверхопа через 5 секунд")
         safeServerhop()
     end)
 end
-
-debug_log("Скрипт полностью загружен и запущен")
