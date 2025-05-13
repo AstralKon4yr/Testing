@@ -7,8 +7,11 @@ getgenv().Optimization = {
 
 -- Настройка серверхопа каждые 2 минуты
 getgenv().ServerHopSettings = {
-    interval = 15, -- 2 минуты в секундах
-    last_hop_time = os.time() -- время последнего серверхопа
+    interval = 120, -- 2 минуты в секундах
+    last_hop_time = os.time() - math.random(0, 60), -- рандомное начальное время для рассинхронизации
+    use_random_offset = true, -- использовать ли рандомную задержку перед хопом
+    min_players = 2, -- минимальное количество игроков в сервере для перехода
+    max_players = 14 -- максимальное количество игроков в сервере для перехода (из 50)
 };
 
 if getgenv().Optimization.state then
@@ -62,7 +65,7 @@ local function cleanCache()
         writefile(cache_file, game:GetService("HttpService"):JSONEncode(rifts_cache))
     end)
     
-    print("Cache cleaned: Removed", removed_count, "items. Current cache size:", table.getn(rifts_cache))
+    print("Cache cleaned: Removed", removed_count, "items. Current cache size:", #rifts_cache)
 end
 
 -- Загружаем кэш, если он существует
@@ -197,12 +200,18 @@ local notify = function(webhook, data)
     return response;
 end
 
+-- Улучшенный сервер-хоп для предотвращения попадания на одни и те же серверы
 local serverhop = function()
+    -- Добавляем случайную задержку для рассинхронизации аккаунтов
+    if getgenv().ServerHopSettings.use_random_offset then
+        local random_delay = math.random(3, 15)
+        print("Adding random delay before server hop:", random_delay, "seconds")
+        wait(random_delay)
+    end
+    
     -- Обновляем время последнего серверхопа
     getgenv().ServerHopSettings.last_hop_time = os.time()
     print("Initiating server hop at:", os.date("%H:%M:%S", getgenv().ServerHopSettings.last_hop_time))
-    
-    wait(5);
 
     local file = "serverhop_history.json";
     local history = {};
@@ -222,8 +231,16 @@ local serverhop = function()
         history = new_history;
     end
     
+    -- Добавляем жеребьевку для более случайного распределения серверов
+    local page_size = 100
+    local page_offset = math.random(0, 3) * page_size
+    
     local req = request({
-        Url = string.format("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Desc&limit=100&excludeFullGames=true", game.PlaceId);
+        Url = string.format("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Desc&limit=%d&cursor=%s&excludeFullGames=true", 
+            game.PlaceId,
+            page_size,
+            page_offset > 0 and tostring(page_offset) or ""
+        );
     })
     
     local success, body = pcall(function()
@@ -234,23 +251,36 @@ local serverhop = function()
         local servers = {};
         
         for _, server in pairs(body.data) do
-            if server.playing < server.maxPlayers and server.id ~= game.JobId and not history[server.id] then
-                table.insert(servers, server);
+            if server.playing >= getgenv().ServerHopSettings.min_players and 
+               server.playing <= getgenv().ServerHopSettings.max_players and
+               server.id ~= game.JobId and 
+               not history[server.id] then
+                
+                -- Приоритизируем серверы с меньшим количеством игроков (для распределения аккаунтов)
+                local priority = 50 - server.playing
+                for i = 1, priority do
+                    table.insert(servers, server);
+                end
             end
         end
         
         if #servers > 0 then
+            -- Выбираем действительно случайный сервер из взвешенного списка
             local selected_server = servers[math.random(1, #servers)];
             history[selected_server.id] = current_time;
             writefile(file, game:GetService("HttpService"):JSONEncode(history));
+            
+            print("Selected server with", selected_server.playing, "players")
             game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, selected_server.id, local_player);
         else
+            print("No suitable servers found, trying public teleport")
             repeat
                 game:GetService("TeleportService"):Teleport(game.PlaceId, local_player);
                 task.wait(20);
             until game:FindFirstChild("NetworkClient") ~= nil;
         end
     else
+        print("Error fetching servers, trying public teleport")
         repeat
             game:GetService("TeleportService"):Teleport(game.PlaceId, local_player);
             task.wait(20);
