@@ -23,6 +23,7 @@ end
 
 local players = game:GetService("Players");
 local local_player = players.LocalPlayer;
+local http_service = game:GetService("HttpService");
 
 -- Исправление: добавляю ожидание и проверки на nil
 local rifts
@@ -62,7 +63,7 @@ local function cleanCache()
     
     -- Сохраняем обновленный кэш
     pcall(function()
-        writefile(cache_file, game:GetService("HttpService"):JSONEncode(rifts_cache))
+        writefile(cache_file, http_service:JSONEncode(rifts_cache))
     end)
     
     print("Cache cleaned: Removed", removed_count, "items. Current cache size:", #rifts_cache)
@@ -71,7 +72,7 @@ end
 -- Загружаем кэш, если он существует
 if pcall(function() readfile(cache_file) end) then
     pcall(function()
-        rifts_cache = game:GetService("HttpService"):JSONDecode(readfile(cache_file))
+        rifts_cache = http_service:JSONDecode(readfile(cache_file))
     end)
     cleanCache() -- Очищаем кэш при загрузке
 end
@@ -159,8 +160,8 @@ local spam_messages = {
     "X25 LUCK RIFTS AT ģģ/ easyrift 🍀"
 };
 
--- Обновляем формат ссылки для Discord кнопок
-local join_link = string.format("https://www.roblox.com/games/%d?jobId=%s", game.PlaceId, game.JobId);
+-- ИСПРАВЛЕННЫЙ формат ссылки для кнопки Join в Discord
+local join_link = string.format("https://roblox.com/games/start?placeId=%d&gameInstanceId=%s", game.PlaceId, game.JobId);
 
 local parse_time = function(text)
     text = string.lower(string.gsub(text, "^%s*(.-)%s*$", "%1"));
@@ -191,7 +192,7 @@ local request = (syn ~= nil and syn.request) or (http ~= nil and http.request) o
 local notify = function(webhook, data)
     local response = request({
         Url = webhook, 
-        Body = game:GetService("HttpService"):JSONEncode(data), 
+        Body = http_service:JSONEncode(data), 
         Method = "POST", 
         Headers = { ['content-type'] = "application/json" }
     });
@@ -218,7 +219,7 @@ local serverhop = function()
     
     -- Load history if file exists
     if pcall(function() readfile(file) end) then
-        history = game:GetService("HttpService"):JSONDecode(readfile(file))
+        history = http_service:JSONDecode(readfile(file))
         
         local new_history = {};
         for serverId, jt in pairs(history) do
@@ -243,7 +244,7 @@ local serverhop = function()
     })
     
     local success, body = pcall(function()
-        return game:GetService("HttpService"):JSONDecode(req.Body);
+        return http_service:JSONDecode(req.Body);
     end)
     
     if success and body and body.data then
@@ -267,7 +268,7 @@ local serverhop = function()
             -- Выбираем действительно случайный сервер из взвешенного списка
             local selected_server = servers[math.random(1, #servers)];
             history[selected_server.id] = current_time;
-            writefile(file, game:GetService("HttpService"):JSONEncode(history));
+            writefile(file, http_service:JSONEncode(history));
             
             print("Selected server with", selected_server.playing, "players")
             game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, selected_server.id, local_player);
@@ -382,46 +383,52 @@ do
         local discord_time = time_to_discorddate(time);
         local height = math.floor(rift:GetPivot().Position.Y) - 4;
         
-        -- Новый формат сообщения для корректного отображения кнопок в Discord
+        -- ИСПРАВЛЕНО: Новый формат сообщения для корректного отображения кнопок в Discord
         local message = {
-            ['content'] = data.role_id and data.role_id ~= "" and ("<@&" .. data.role_id .. ">") or "",
-            ['embeds'] = {{
-                ['title'] = data.name .. " has been found!",
-                ['fields'] = {
-                    {
-                        ['name'] = "⏲ Expires in",
-                        ['value'] = discord_time,
-                        ['inline'] = true
+            content = data.role_id and data.role_id ~= "" and ("<@&" .. data.role_id .. ">") or "",
+            embeds = {
+                {
+                    title = data.name .. " has been found!",
+                    fields = {
+                        {
+                            name = "⏲ Expires in",
+                            value = discord_time,
+                            inline = true
+                        },
+                        {
+                            name = "📏 Height",
+                            value = tostring(height),
+                            inline = true
+                        },
+                        {
+                            name = "👤 Players",
+                            value = tostring(#players:GetPlayers()),
+                            inline = true
+                        },
+                        {
+                            name = "🍀 Luck",
+                            value = luck
+                        }
                     },
-                    {
-                        ['name'] = "📏 Height",
-                        ['value'] = tostring(height),
-                        ['inline'] = true
-                    },
-                    {
-                        ['name'] = "👤 Players",
-                        ['value'] = tostring(#players:GetPlayers()),
-                        ['inline'] = true
-                    },
-                    {
-                        ['name'] = "🍀 Luck",
-                        ['value'] = luck
+                    color = 4508791,
+                    footer = {
+                        text = "gg/easyrift • " .. os.date("%H:%M", os.time())
                     }
-                },
-                ['color'] = 4508791,
-                ['footer'] = {
-                    ['text'] = "gg/easyrift • " .. os.date("%H:%M", os.time())
                 }
-            }},
-            ['components'] = {{
-                ['type'] = 1,
-                ['components'] = {{
-                    ['type'] = 2,
-                    ['style'] = 5,
-                    ['label'] = "Join",
-                    ['url'] = join_link
-                }}
-            }}
+            },
+            components = {
+                {
+                    type = 1,
+                    components = {
+                        {
+                            type = 2,
+                            style = 5,
+                            label = "Join",
+                            url = join_link
+                        }
+                    }
+                }
+            }
         }
 
         -- Сохраняем рифт в кэше с текущим временем
@@ -429,7 +436,7 @@ do
         
         -- Сохраняем обновленный кэш
         pcall(function()
-            writefile(cache_file, game:GetService("HttpService"):JSONEncode(rifts_cache))
+            writefile(cache_file, http_service:JSONEncode(rifts_cache))
         end)
         
         notify(data.webhook, message);
