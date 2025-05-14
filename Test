@@ -159,7 +159,8 @@ local spam_messages = {
     "X25 LUCK RIFTS AT ģģ/ easyrift 🍀"
 };
 
-local join_link = string.format('https://www.roblox.com/games/start?placeId=16302670534&launchData=%d/%s', game.PlaceId, game.JobId);
+-- Обновляем формат ссылки для Discord кнопок
+local join_link = string.format("https://www.roblox.com/games/%d?jobId=%s", game.PlaceId, game.JobId);
 
 local parse_time = function(text)
     text = string.lower(string.gsub(text, "^%s*(.-)%s*$", "%1"));
@@ -381,60 +382,47 @@ do
         local discord_time = time_to_discorddate(time);
         local height = math.floor(rift:GetPivot().Position.Y) - 4;
         
-        -- Изменено: добавлена кнопка и убрано поле с join_link
+        -- Новый формат сообщения для корректного отображения кнопок в Discord
         local message = {
-            -- Исправление формата упоминания роли - прямое использование без форматирования
             ['content'] = data.role_id and data.role_id ~= "" and ("<@&" .. data.role_id .. ">") or "",
-            ['allowed_mentions'] = {
-                ['parse'] = {"roles"}
-            },
-            ['embeds'] = {
-                { 
-                    ['title'] = string.format("**%s has been found!**", data.name), 
-                    ['fields'] = {
-                        {
-                            ['name'] = "**⏲ Expires in**",
-                            ['value'] = discord_time,
-                            ['inline'] = true
-                        },
-                        {
-                            ['name'] = "**📏 Height**",
-                            ['value'] = string.format("`%d`", height),
-                            ['inline'] = true
-                        },
-                        {
-                            ['name'] = "**👤 Players**",
-                            ['value'] = string.format("`%d`", #players:GetPlayers()),
-                            ['inline'] = true
-                        },
-                        {
-                            ['name'] = "**🍀 Luck**",
-                            ['value'] = string.format("`%s`", luck)
-                        }
-                        -- Поле "Join link" убрано, так как используется кнопка
+            ['embeds'] = {{
+                ['title'] = data.name .. " has been found!",
+                ['fields'] = {
+                    {
+                        ['name'] = "⏲ Expires in",
+                        ['value'] = discord_time,
+                        ['inline'] = true
                     },
-                    ['color'] = 4508791,
-                    ['timestamp'] = DateTime.now():ToIsoDate(),
-                    ['footer'] = {
-                        ['text'] = "gg/easyrift • " .. os.date("%H:%M", os.time())
+                    {
+                        ['name'] = "📏 Height",
+                        ['value'] = tostring(height),
+                        ['inline'] = true
+                    },
+                    {
+                        ['name'] = "👤 Players",
+                        ['value'] = tostring(#players:GetPlayers()),
+                        ['inline'] = true
+                    },
+                    {
+                        ['name'] = "🍀 Luck",
+                        ['value'] = luck
                     }
+                },
+                ['color'] = 4508791,
+                ['footer'] = {
+                    ['text'] = "gg/easyrift • " .. os.date("%H:%M", os.time())
                 }
-            },
-            -- Добавляем компоненты для кнопки Join Game
-            ['components'] = {
-                {
-                    ['type'] = 1, -- ActionRow тип
-                    ['components'] = {
-                        {
-                            ['type'] = 2, -- Button тип
-                            ['style'] = 5, -- Link button стиль
-                            ['label'] = "Join", -- текст кнопки
-                            ['url'] = join_link -- ссылка для перехода
-                        }
-                    }
-                }
-            }
-        };
+            }},
+            ['components'] = {{
+                ['type'] = 1,
+                ['components'] = {{
+                    ['type'] = 2,
+                    ['style'] = 5,
+                    ['label'] = "Join",
+                    ['url'] = join_link
+                }}
+            }}
+        }
 
         -- Сохраняем рифт в кэше с текущим временем
         rifts_cache[rift_id] = os.time()
