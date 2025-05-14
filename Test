@@ -5,24 +5,13 @@ getgenv().Optimization = {
     fps = 3
 };
 
--- Настройка серверхопа каждые 15 секунд
+-- Настройка серверхопа каждые 2 минуты
 getgenv().ServerHopSettings = {
-    interval = 15, -- 15 секунд для быстрого хопа
-    last_hop_time = os.time() - 15, -- Начинаем с немедленного хопа
+    interval = 120, -- 2 минуты в секундах
+    last_hop_time = os.time() - math.random(0, 60), -- рандомное начальное время для рассинхронизации
     use_random_offset = true, -- использовать ли рандомную задержку перед хопом
     min_players = 2, -- минимальное количество игроков в сервере для перехода
-    max_players = 10, -- максимальное количество игроков в сервере для перехода
-    server_distribution = true, -- распределять аккаунты по разным серверам
-    debug = true -- показывать отладочные сообщения
-};
-
--- Настройки кеширования рифтов
-getgenv().CacheSettings = {
-    global_cache_file = "global_rifts_cache.json", -- файл для глобального кеша
-    local_cache_file = "local_rifts_cache.json", -- файл для локального кеша
-    cache_ttl = 900, -- время жизни кеша в секундах (15 минут)
-    precision = 1, -- точность координат (количество знаков после запятой)
-    use_shared_cache = true -- использовать общий кеш между аккаунтами
+    max_players = 14 -- максимальное количество игроков в сервере для перехода (из 50)
 };
 
 if getgenv().Optimization.state then
@@ -34,19 +23,6 @@ end
 
 local players = game:GetService("Players");
 local local_player = players.LocalPlayer;
-local http_service = game:GetService("HttpService");
-local teleport_service = game:GetService("TeleportService");
-
--- Хопнул ли скрипт уже (для предотвращения повторных хопов)
-local is_hopping = false
-
--- Создаем глобальный объект для межаккаунтного кеширования
-if not _G.RiftFinderCache then
-    _G.RiftFinderCache = {
-        rifts = {},
-        last_cleanup = os.time()
-    }
-end
 
 -- Исправление: добавляю ожидание и проверки на nil
 local rifts
@@ -65,188 +41,45 @@ repeat
 until getRifts()
 
 -- Система для предотвращения дублирования вебхуков
-local local_cache_file = getgenv().CacheSettings.local_cache_file
-local global_cache_file = getgenv().CacheSettings.global_cache_file
-local local_rifts_cache = {}
-local global_rifts_cache = {}
+local cache_file = "rifts_cache.json"
+local rifts_cache = {}
 
--- Функция для создания более точного ID рифта
-local function createRiftId(rift_name, position, time_expires, luck_value)
-    local precision = getgenv().CacheSettings.precision
-    local rounded_x = math.floor(position.X * (10^precision)) / (10^precision)
-    local rounded_y = math.floor(position.Y * (10^precision)) / (10^precision)
-    local rounded_z = math.floor(position.Z * (10^precision)) / (10^precision)
-    
-    -- Добавляем информацию о времени окончания, округляя до минуты
-    local expiry_minute = math.floor(time_expires / 60) * 60
-    
-    return string.format("%s_%.1f_%.1f_%.1f_%d_%s", 
-        rift_name, 
-        rounded_x, 
-        rounded_y, 
-        rounded_z, 
-        expiry_minute,
-        luck_value or "noluck"
-    )
-end
-
--- Функция для безопасного чтения файла с обработкой ошибок
-local function safeReadFile(filepath)
-    if not isfile or not isfile(filepath) then
-        return nil
-    end
-    
-    local success, content = pcall(function()
-        return readfile(filepath)
-    end)
-    
-    if success then
-        local parsed_success, data = pcall(function()
-            return http_service:JSONDecode(content)
-        end)
-        
-        if parsed_success then
-            return data
-        end
-    end
-    
-    return nil
-end
-
--- Функция для безопасной записи файла
-local function safeWriteFile(filepath, data)
-    if not writefile then return false end
-    
-    local success, encoded = pcall(function()
-        return http_service:JSONEncode(data)
-    end)
-    
-    if success then
-        pcall(function()
-            writefile(filepath, encoded)
-        end)
-        return true
-    end
-    
-    return false
-end
-
--- Функция для очистки кеша
+-- Функция для очистки кэша
 local function cleanCache()
     local current_time = os.time()
-    local ttl = getgenv().CacheSettings.cache_ttl
+    local new_cache = {}
+    local removed_count = 0
     
-    -- Очищаем локальный кеш
-    local new_local_cache = {}
-    for rift_id, timestamp in pairs(local_rifts_cache) do
-        if current_time - timestamp < ttl then
-            new_local_cache[rift_id] = timestamp
+    for rift_id, timestamp in pairs(rifts_cache) do
+        if current_time - timestamp < 540 then -- 9 минут (540 секунд)
+            new_cache[rift_id] = timestamp
+        else
+            removed_count = removed_count + 1
         end
     end
-    local_rifts_cache = new_local_cache
     
-    -- Очищаем глобальный кеш
-    local new_global_cache = {}
-    for rift_id, timestamp in pairs(global_rifts_cache) do
-        if current_time - timestamp < ttl then
-            new_global_cache[rift_id] = timestamp
-        end
-    end
-    global_rifts_cache = new_global_cache
+    rifts_cache = new_cache
     
-    -- Очищаем глобальный объект
-    if _G.RiftFinderCache then
-        local new_shared_cache = {}
-        for rift_id, timestamp in pairs(_G.RiftFinderCache.rifts) do
-            if current_time - timestamp < ttl then
-                new_shared_cache[rift_id] = timestamp
-            end
-        end
-        _G.RiftFinderCache.rifts = new_shared_cache
-        _G.RiftFinderCache.last_cleanup = current_time
-    end
+    -- Сохраняем обновленный кэш
+    pcall(function()
+        writefile(cache_file, game:GetService("HttpService"):JSONEncode(rifts_cache))
+    end)
     
-    -- Сохраняем обновленные кеши
-    safeWriteFile(local_cache_file, local_rifts_cache)
-    
-    if getgenv().CacheSettings.use_shared_cache then
-        safeWriteFile(global_cache_file, global_rifts_cache)
-    end
-    
-    local local_count = 0
-    for _ in pairs(local_rifts_cache) do local_count = local_count + 1 end
-    
-    local global_count = 0
-    for _ in pairs(global_rifts_cache) do global_count = global_count + 1 end
-    
-    print("Cache cleaned: Local cache size:", local_count, "Global cache size:", global_count)
+    print("Cache cleaned: Removed", removed_count, "items. Current cache size:", #rifts_cache)
 end
 
--- Загружаем локальный кеш
-local loaded_local = safeReadFile(local_cache_file)
-if loaded_local then
-    local_rifts_cache = loaded_local
+-- Загружаем кэш, если он существует
+if pcall(function() readfile(cache_file) end) then
+    pcall(function()
+        rifts_cache = game:GetService("HttpService"):JSONDecode(readfile(cache_file))
+    end)
+    cleanCache() -- Очищаем кэш при загрузке
 end
 
--- Загружаем глобальный кеш
-if getgenv().CacheSettings.use_shared_cache then
-    local loaded_global = safeReadFile(global_cache_file)
-    if loaded_global then
-        global_rifts_cache = loaded_global
-    end
-end
-
--- Функция проверки рифта в кеше
-local function isRiftCached(rift_id)
-    -- Проверяем локальный кеш
-    if local_rifts_cache[rift_id] then
-        return true
-    end
-    
-    -- Проверяем глобальный файловый кеш
-    if getgenv().CacheSettings.use_shared_cache and global_rifts_cache[rift_id] then
-        return true
-    end
-    
-    -- Проверяем _G объект для межаккаунтного кеширования
-    if _G.RiftFinderCache and _G.RiftFinderCache.rifts[rift_id] then
-        return true
-    end
-    
-    return false
-end
-
--- Функция для кеширования рифта
-local function cacheRift(rift_id)
-    local current_time = os.time()
-    
-    -- Сохраняем в локальный кеш
-    local_rifts_cache[rift_id] = current_time
-    
-    -- Сохраняем в глобальный файловый кеш
-    if getgenv().CacheSettings.use_shared_cache then
-        global_rifts_cache[rift_id] = current_time
-        safeWriteFile(global_cache_file, global_rifts_cache)
-    end
-    
-    -- Сохраняем в _G для межаккаунтного кеширования
-    if _G.RiftFinderCache then
-        _G.RiftFinderCache.rifts[rift_id] = current_time
-    end
-    
-    -- Сохраняем локальный кеш
-    safeWriteFile(local_cache_file, local_rifts_cache)
-    
-    -- Автоматическая очистка глобального кеша если прошло достаточно времени
-    if _G.RiftFinderCache and current_time - _G.RiftFinderCache.last_cleanup > 300 then
-        cleanCache()
-    end
-end
-
--- Запускаем автоматическую очистку кеша каждые 5 минут
+-- Запускаем автоматическую очистку кэша каждые 9 минут
 task.spawn(function()
     while true do
-        task.wait(300) -- 5 минут
+        task.wait(540) -- 9 минут
         print("Scheduled cache cleanup...")
         cleanCache()
     end
@@ -254,49 +87,49 @@ end)
 
 local whitelisted_eggs = { -- теперь тут меняешь вебхуки НА КАЖДОЕ ЯЙЦО/СУНДУК, в luck через запятую в кавычках прописываешь множитель удачи
     ["rainbow-egg"] = {
-        webhook = "https://discord.com/api/webhooks/1372211950334906499/_fEmj8oGQ8x4v2kUYeweBlpGdoaCoJ6tIs59BfsBUBeApzBax76neHeWmYbxZyDAXU5f",
+        webhook = "https://discord.com/api/webhooks/1369680016367161465/ytWtBI3H3EKVrjifey0KMsJ05wEtuy1cdMV7EvJ5OX6cb128k36s17sS8EYM7pCXkxkg",
         role_id = "", -- ID роли как строка
         luck = { "x25" },
         name = "Rainbow Egg"
     },
     ["nightmare-egg"] = {
-        webhook = "https://discord.com/api/webhooks/1372212037693866014/agJ1yjXiLDXZAuiJISTd4kr3cCuCRsXuxRVmx42YqrIXJ9qpUSe7wpM9U3-MTYblwQsk",
+        webhook = "https://discord.com/api/webhooks/1369679913308655828/es2UQtG9m_FY_aYotNaVKpFNwDXj0IOakFJg3g8lQ107fAHPJWoUqvU_1_RLEpCGUmIJ",
         role_id = "",
         luck = { "x25" },
         name = "Nightmare Egg"
     },
     ["void-egg"] = {
-        webhook = "https://discord.com/api/webhooks/1372211864133701642/nn8YJOJs5BleUhifO-hA0UNI3nIqnzBlHrhFSTOiibxQBGBjjvMTL8bY9jTciCbjUlNL",
+        webhook = "https://discord.com/api/webhooks/1369680094322364446/vkkzcYcVY30Tb-D2MRZMrQbR3d2U_0YCdevjgPR2QTaEjFcFs8b7uZbEi-C5u60Bum6N",
         role_id = "",
         luck = { "x25" },
         name = "Void Egg"
     },
     ["royal-chest"] = {
-        webhook = "https://discord.com/api/webhooks/1372212119629463753/oVq84wDoSWkyoraVjkYsdsxTBRx1bL3Ui1vUv8eAN7FJNb0Fil27LCOEF5BUT-ZP4Fx_",
+        webhook = "https://discord.com/api/webhooks/1369320116969541702/217cjweQ3Aga1IwwBzClwuNpe2KoXRKOq2IJMCV9sgzlEpd9iYHH2UJ89IT4qq8smumE",
         role_id = "1371539682713796648",
         name = "Royal Chest"
     },
     ["bubble-rift"] = {
-        webhook = "https://discord.com/api/webhooks/1372211352357179432/7E34K-TjOiIBvKwze6XcknyeMZr73rN77eGJ1iinqCs6noRMvmNIwm3rGH4_OemmtSah",
+        webhook = "https://discord.com/api/webhooks/1369680404487077958/pNTDbV_qBHqzTKXrxagTlqMyFgc13qmtRha8ca1Fkn9AdlnFgjT977lDU9A8Tavw1Ju9",
         role_id = "",
         name = "Bubble Rifft"
     },
     ["mining-egg"] = {
-        webhook = "https://discord.com/api/webhooks/1372211772303609896/PinWw2B_ppgV8JsspqCsfFEx8kbK1ozGZEywUFaO5KjTndjm3FvpE_l6V2XO3_XH_amI",
+        webhook = "https://discord.com/api/webhooks/1369680163113140354/KSzLYRiJMmYeeGOv4aSekxlVxrxihddZrvyJ_AfAtwDZsLCCYwXMvYq7HrEfP1N6tJjH",
         role_id = "",
         luck = { "x25" },
         name = "Mining Egg"
     },
     ["cyber-egg"] = {
-        webhook = "https://discord.com/api/webhooks/1372211676283273336/Xxiew3FwtHoGld268v6yI46y0AlS9rVlKbjDIIPWLAugNRCO-aN_G7MkXd0z9auQksud",
+        webhook = "https://discord.com/api/webhooks/1369680252145504256/OEFlHbKAzOuz6kZ97gcgsNyDrBR6wMBNlwiaIXWVNTeXUM5yIDLPGstTawfPE4Lx6a6R",
         role_id = "1371540351361482802",
         luck = { "x25" },
         name = "Cyber Egg"
     },
-    ["dice-rift"] = {
-        webhook = "https://discord.com/api/webhooks/1372211539167281244/CcP3FgYKV-sZAMmtrtu4z5J5wJJ-SCGUAfavJSvyOc-L4uciHxvIiVmsnCMnpUabrb2s",
+    ["dice-chest"] = {
+        webhook = "https://discord.com/api/webhooks/1369680321729138718/s6R5cyeB3k9sBAD4Akxaem86xzxW4-6lNWgs-V5P2TDH86pxWl7mT1Wwvs-XfN4O-GVS",
         role_id = "1371539732022169601",
-        name = "Dice Rift"
+        name = "Dice Chest"
     },
     ["underworld-1"] = {
         webhook = "https://discord.com/api/webhooks/1371074619645235243/u_0v1rptBiojPUlQSSwaA7zoIbryx-4qEK1JZaaJkKd82T9Mo4VWMN3hyD6beszMNcYY",
@@ -317,18 +150,18 @@ local whitelisted_eggs = { -- теперь тут меняешь вебхуки 
         name = "Underworld 3"
     }
 };
-
 local spam_messages = {
     "Best Rift Finder = ģģ/ easyrift 🔥",
-    "Underworld Egg is found! ģģ/ easyrift 🔥",
+    "Silly Egg is found! ģģ/ easyrift 🔥",
     "Best Pet Shop = ģģ/ easyrift 🔥",
     "REACH THE LEADERBOARDS USING ğğ/ easyrift 🏆",
     "SECRETS GIVE-AWAY HAPPENING ģģ/ easyrift 🌟",
     "X25 LUCK RIFTS AT ģģ/ easyrift 🍀",
+    "GET SILLY EGG AT ģģ/ easyrift 🥚",
     "UNDERWORLD RIFT ģģ/ easyrift 🥚"
 };
 
-local join_link = string.format('https://www.roblox.com/games/start?placeId=%d&launchData=%s', game.PlaceId, game.JobId);
+local join_link = string.format('https://www.roblox.com/games/start?placeId=16302670534&launchData=%d/%s', game.PlaceId, game.JobId);
 
 local parse_time = function(text)
     text = string.lower(string.gsub(text, "^%s*(.-)%s*$", "%1"));
@@ -355,12 +188,11 @@ local time_to_discorddate = function(time_)
 end
 
 local request = (syn ~= nil and syn.request) or (http ~= nil and http.request) or (fluxus ~= nil and fluxus.request) or http_request or request;
-
 -- Улучшенная функция notify для отладки пингов
 local notify = function(webhook, data)
     local response = request({
         Url = webhook, 
-        Body = http_service:JSONEncode(data), 
+        Body = game:GetService("HttpService"):JSONEncode(data), 
         Method = "POST", 
         Headers = { ['content-type'] = "application/json" }
     });
@@ -368,166 +200,95 @@ local notify = function(webhook, data)
     return response;
 end
 
--- Улучшенный сервер-хоп с отладочными сообщениями
-local function serverhop()
-    -- Проверяем, не находимся ли мы уже в процессе хопа
-    if is_hopping then
-        print("SKIP: Already hopping to a new server")
-        return
-    end
-    
-    -- Устанавливаем флаг, что мы в процессе хопа
-    is_hopping = true
-    
-    if getgenv().ServerHopSettings.debug then
-        print("SERVER HOP: Starting serverhop process")
-    end
-    
-    -- Добавляем небольшую задержку для рассинхронизации
+-- Улучшенный сервер-хоп для предотвращения попадания на одни и те же серверы
+local serverhop = function()
+    -- Добавляем случайную задержку для рассинхронизации аккаунтов
     if getgenv().ServerHopSettings.use_random_offset then
-        local random_delay = math.random(1, 3)
-        if getgenv().ServerHopSettings.debug then
-            print("SERVER HOP: Random delay before hop:", random_delay)
-        end
+        local random_delay = math.random(3, 15)
+        print("Adding random delay before server hop:", random_delay, "seconds")
         wait(random_delay)
     end
     
-    -- Обновляем время последнего хопа
+    -- Обновляем время последнего серверхопа
     getgenv().ServerHopSettings.last_hop_time = os.time()
-    
-    -- Получаем историю серверов
+    print("Initiating server hop at:", os.date("%H:%M:%S", getgenv().ServerHopSettings.last_hop_time))
+
     local file = "serverhop_history.json";
     local history = {};
     local current_time = os.time();
     
-    -- Загружаем историю, если она существует
-    if pcall(function() return readfile(file) end) then
-        pcall(function()
-            history = http_service:JSONDecode(readfile(file))
-            
-            -- Очищаем старые записи в истории
-            local new_history = {};
-            for serverId, jt in pairs(history) do
-                if current_time - jt < 300 then -- 5 минут
-                    new_history[serverId] = jt;
-                end
+    -- Load history if file exists
+    if pcall(function() readfile(file) end) then
+        history = game:GetService("HttpService"):JSONDecode(readfile(file))
+        
+        local new_history = {};
+        for serverId, jt in pairs(history) do
+            if current_time - jt < 540 then
+                new_history[serverId] = jt;
             end
-            
-            history = new_history;
-        end)
+        end
+
+        history = new_history;
     end
     
-    -- Получаем коллекцию серверов
+    -- Добавляем жеребьевку для более случайного распределения серверов
     local page_size = 100
-    local page_offset = (local_player.UserId % 5) * page_size
-    local sort_order = (local_player.UserId % 2 == 0) and "Asc" or "Desc"
+    local page_offset = math.random(0, 3) * page_size
     
-    if getgenv().ServerHopSettings.debug then
-        print("SERVER HOP: Requesting servers with params:", 
-              "offset =", page_offset,
-              "sort_order =", sort_order)
-    end
+    local req = request({
+        Url = string.format("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Desc&limit=%d&cursor=%s&excludeFullGames=true", 
+            game.PlaceId,
+            page_size,
+            page_offset > 0 and tostring(page_offset) or ""
+        );
+    })
     
-    -- Выполняем запрос к API
-    local success, result = pcall(function()
-        return request({
-            Url = string.format(
-                "https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=%s&limit=%d&cursor=%s&excludeFullGames=true", 
-                game.PlaceId,
-                sort_order,
-                page_size,
-                page_offset > 0 and tostring(page_offset) or ""
-            )
-        })
+    local success, body = pcall(function()
+        return game:GetService("HttpService"):JSONDecode(req.Body);
     end)
     
-    if success and result then
-        local body = http_service:JSONDecode(result.Body)
+    if success and body and body.data then
+        local servers = {};
         
-        if getgenv().ServerHopSettings.debug then
-            print("SERVER HOP: Got response with", #(body.data or {}), "servers")
+        for _, server in pairs(body.data) do
+            if server.playing >= getgenv().ServerHopSettings.min_players and 
+               server.playing <= getgenv().ServerHopSettings.max_players and
+               server.id ~= game.JobId and 
+               not history[server.id] then
+                
+                -- Приоритизируем серверы с меньшим количеством игроков (для распределения аккаунтов)
+                local priority = 50 - server.playing
+                for i = 1, priority do
+                    table.insert(servers, server);
+                end
+            end
         end
         
-        if body and body.data and #body.data > 0 then
-            local suitable_servers = {}
+        if #servers > 0 then
+            -- Выбираем действительно случайный сервер из взвешенного списка
+            local selected_server = servers[math.random(1, #servers)];
+            history[selected_server.id] = current_time;
+            writefile(file, game:GetService("HttpService"):JSONEncode(history));
             
-            -- Фильтруем подходящие серверы
-            for _, server in pairs(body.data) do
-                if server.playing >= getgenv().ServerHopSettings.min_players and 
-                   server.playing <= getgenv().ServerHopSettings.max_players and
-                   server.id ~= game.JobId and 
-                   not history[server.id] then
-                    
-                    local priority = 50 - server.playing -- Чем меньше игроков, тем выше приоритет
-                    for i = 1, priority do
-                        table.insert(suitable_servers, server)
-                    end
-                end
-            end
-            
-            if getgenv().ServerHopSettings.debug then
-                print("SERVER HOP: Found", #suitable_servers, "suitable weighted servers")
-            end
-            
-            -- Если есть подходящие серверы, выбираем один случайно
-            if #suitable_servers > 0 then
-                -- Перемешиваем для большей случайности
-                for i = #suitable_servers, 2, -1 do
-                    local j = math.random(1, i)
-                    suitable_servers[i], suitable_servers[j] = suitable_servers[j], suitable_servers[i]
-                end
-                
-                local selected_server = suitable_servers[math.random(1, #suitable_servers)]
-                
-                -- Добавляем сервер в историю
-                history[selected_server.id] = current_time
-                writefile(file, http_service:JSONEncode(history))
-                
-                if getgenv().ServerHopSettings.debug then
-                    print("SERVER HOP: Selected server with", selected_server.playing, "players, ID:", selected_server.id)
-                end
-                
-                -- Телепортируемся на выбранный сервер
-                teleport_service:TeleportToPlaceInstance(game.PlaceId, selected_server.id, local_player)
-                
-                -- Ждем 10 секунд и проверяем, произошла ли телепортация
-                task.delay(10, function()
-                    if game.JobId == selected_server.id then
-                        print("SERVER HOP: Successfully teleported to new server")
-                    else
-                        print("SERVER HOP: Teleport failed or still pending")
-                        is_hopping = false -- Сбрасываем флаг хопа
-                    end
-                end)
-                
-                return
-            else
-                if getgenv().ServerHopSettings.debug then
-                    print("SERVER HOP: No suitable servers found, trying generic teleport")
-                end
-            end
+            print("Selected server with", selected_server.playing, "players")
+            game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, selected_server.id, local_player);
         else
-            if getgenv().ServerHopSettings.debug then
-                print("SERVER HOP: No servers in API response, trying generic teleport")
-            end
+            print("No suitable servers found, trying public teleport")
+            repeat
+                game:GetService("TeleportService"):Teleport(game.PlaceId, local_player);
+                task.wait(20);
+            until game:FindFirstChild("NetworkClient") ~= nil;
         end
     else
-        if getgenv().ServerHopSettings.debug then
-            print("SERVER HOP: Error fetching servers:", result)
-            print("Trying generic teleport")
-        end
+        print("Error fetching servers, trying public teleport")
+        repeat
+            game:GetService("TeleportService"):Teleport(game.PlaceId, local_player);
+            task.wait(20);
+        until game:FindFirstChild("NetworkClient") ~= nil;
     end
-    
-    -- Если не нашли подходящие серверы, просто телепортируемся в игру
-    teleport_service:Teleport(game.PlaceId, local_player)
-    
-    -- Сбрасываем флаг через 10 секунд, если телепорт не сработал
-    task.delay(10, function()
-        is_hopping = false
-    end)
 end
 
-task.spawn(function() -- anti afk
+task.spawn(function() -- anti afk (xz zachem, poidet)
     for _,v in pairs(getconnections(local_player.Idled)) do v:Disable() end
     for _,v in pairs(getconnections(game:GetService("UserInputService").WindowFocused)) do v:Disable() end
     for _,v in pairs(getconnections(game:GetService("UserInputService").WindowFocusReleased)) do v:Disable() end
@@ -547,26 +308,16 @@ task.spawn(function()
     end
 end)
 
--- Таймер серверхопа 
+-- Серверхоп каждые 2 минуты
 task.spawn(function()
-    -- Добавляем небольшую задержку перед первым хопом
-    task.wait(5)
-    
     while true do
-        -- Проверяем чаще для более точного соблюдения интервала
-        task.wait(1)
+        task.wait(5) -- Проверяем каждые 5 секунд
+        local current_time = os.time()
+        local elapsed_time = current_time - getgenv().ServerHopSettings.last_hop_time
         
-        -- Если мы не в процессе хопа и прошло достаточно времени
-        if not is_hopping then
-            local current_time = os.time()
-            local elapsed_time = current_time - getgenv().ServerHopSettings.last_hop_time
-            
-            if elapsed_time >= getgenv().ServerHopSettings.interval then
-                if getgenv().ServerHopSettings.debug then
-                    print("SERVER HOP TIMER: Interval reached -", elapsed_time, "seconds passed")
-                end
-                serverhop()
-            end
+        if elapsed_time >= getgenv().ServerHopSettings.interval then
+            print("Server hop interval reached:", elapsed_time, "seconds")
+            serverhop()
         end
     end
 end)
@@ -595,7 +346,7 @@ do
                     repeat 
                         task.wait(0.5)
                         gui = display:FindFirstChildOfClass("SurfaceGui")
-                    until gui ~= nil or task.wait(5) -- таймаут 5 секунд
+                    until gui ~= nil or task.wait(5) -- таймаут 5 секунд на случай, если GUI не загрузится
                 end
                 
                 if gui and gui:FindFirstChild("Icon") and gui.Icon:FindFirstChild("Luck") then
@@ -615,77 +366,71 @@ do
             continue -- Пропускаем если нет таймера
         end
 
-        -- Получаем время окончания рифта
-        local expiry_time = os.time() + parse_time(gui.Timer.Text);
-        
-        -- Создаем улучшенный ID рифта с более точными координатами
+        -- Создаем уникальный ID для рифта на основе его типа и координат (с округлением)
         local position = rift:GetPivot().Position
-        local rift_id = createRiftId(rift.Name, position, expiry_time, luck)
+        local rift_id = string.format("%s_%d_%d_%d", 
+            rift.Name, 
+            math.floor(position.X), 
+            math.floor(position.Y), 
+            math.floor(position.Z))
         
         -- Проверяем, был ли этот рифт уже найден и отправлен ранее
-        if isRiftCached(rift_id) then
+        if rifts_cache[rift_id] then
             print("Rift already reported:", rift_id)
             continue
         end
         
-        local discord_time = time_to_discorddate(expiry_time);
-        local height = math.floor(position.Y) - 4;
-        
-        -- ИСПРАВЛЕНИЕ: Добавляем Action Row с компонентами
+        local time = os.time() + parse_time(gui.Timer.Text);
+        local discord_time = time_to_discorddate(time);
+        local height = math.floor(rift:GetPivot().Position.Y) - 4;
         local message = {
+            -- Исправление формата упоминания роли - прямое использование без форматирования
             ['content'] = data.role_id and data.role_id ~= "" and ("<@&" .. data.role_id .. ">") or "",
             ['allowed_mentions'] = {
                 ['parse'] = {"roles"}
             },
             ['embeds'] = {
                 { 
-                    ['title'] = string.format("%s has been found!", data.name), 
+                    ['title'] = string.format("**%s has been found!**", data.name), 
                     ['fields'] = {
                         {
-                            ['name'] = "⏲ Expires in",
+                            ['name'] = "**⏲ Expires in**",
                             ['value'] = discord_time,
                             ['inline'] = true
                         },
                         {
-                            ['name'] = "📏 Height",
+                            ['name'] = "**📏 Height**",
                             ['value'] = string.format("`%d`", height),
                             ['inline'] = true
                         },
                         {
-                            ['name'] = "👤 Players",
+                            ['name'] = "**👤 Players**",
                             ['value'] = string.format("`%d`", #players:GetPlayers()),
                             ['inline'] = true
                         },
                         {
-                            ['name'] = "🍀 Luck",
+                            ['name'] = "**🍀 Luck**",
                             ['value'] = string.format("`%s`", luck)
+                        },
+                        {
+                            ['name'] = "**🔗 Join link**",
+                            ['value'] = join_link
                         }
                     },
                     ['color'] = 4508791,
-                    ['footer'] = {
-                        ['text'] = "gg/easyrift • " .. os.date("%H:%M", os.time())
-                    }
-                }
-            },
-            ['components'] = {
-                {
-                    ['type'] = 1,
-                    ['components'] = {
-                        {
-                            ['type'] = 2,
-                            ['label'] = "Join",
-                            ['style'] = 5,
-                            ['url'] = join_link
-                        }
-                    }
+                    ['timestamp'] = DateTime.now():ToIsoDate()
                 }
             }
         };
 
-        -- Кешируем рифт перед отправкой вебхука
-        cacheRift(rift_id)
+        -- Сохраняем рифт в кэше с текущим временем
+        rifts_cache[rift_id] = os.time()
         
-        -- Отправляем вебхук
+        -- Сохраняем обновленный кэш
+        pcall(function()
+            writefile(cache_file, game:GetService("HttpService"):JSONEncode(rifts_cache))
+        end)
+        
         notify(data.webhook, message);
         rifts_sent = rifts_sent + 1
         
@@ -694,30 +439,10 @@ do
     end
     
     print("Rifts found:", rifts_found, "Webhooks sent:", rifts_sent)
+    
+    -- Не делаем моментальный серверхоп здесь, так как работает таймер
 end
 
--- Добавляем принудительный серверхоп через 30 секунд, если по каким-то причинам не сработал автоматический
-task.spawn(function()
-    task.wait(30)
-    if not is_hopping and os.time() - getgenv().ServerHopSettings.last_hop_time >= 30 then
-        print("SERVER HOP: Forced hop after 30 seconds")
-        serverhop()
-    end
-end)
-
--- Обработка кика игрой
-game:GetService("CoreGui"):FindFirstChild("RobloxPromptGui"):FindFirstChild("promptOverlay").ChildAdded:Connect(function(child)
-    print("SERVER HOP: Kick detected, hopping to a new server")
-    if not is_hopping then
-        serverhop()
-    end
-end)
-
--- Принудительно запускаем первый хоп после загрузки
-task.spawn(function()
-    task.wait(8) -- Ждем немного для загрузки
-    print("SERVER HOP: Initial hop after script load")
-    if not is_hopping then
-        serverhop()
-    end
+game:GetService("CoreGui"):FindFirstChild("RobloxPromptGui"):FindFirstChild("promptOverlay").ChildAdded:Connect(function(child) -- при кике игрой
+    serverhop();
 end)
