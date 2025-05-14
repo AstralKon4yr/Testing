@@ -5,10 +5,10 @@ getgenv().Optimization = {
     fps = 3
 };
 
--- Настройка серверхопа каждые 2 минуты
+-- Настройка серверхопа каждые 15 секунд
 getgenv().ServerHopSettings = {
-    interval = 120, -- 2 минуты в секундах
-    last_hop_time = os.time() - math.random(0, 60), -- рандомное начальное время для рассинхронизации
+    interval = 15, -- изменено с 120 на 15 секунд
+    last_hop_time = os.time() - math.random(0, 15), -- рандомное начальное время для рассинхронизации
     use_random_offset = true, -- использовать ли рандомную задержку перед хопом
     min_players = 2, -- минимальное количество игроков в сервере для перехода
     max_players = 14 -- максимальное количество игроков в сервере для перехода (из 50)
@@ -87,64 +87,64 @@ end)
 
 local whitelisted_eggs = { -- теперь тут меняешь вебхуки НА КАЖДОЕ ЯЙЦО/СУНДУК, в luck через запятую в кавычках прописываешь множитель удачи
     ["rainbow-egg"] = {
-        webhook = "https://discord.com/api/webhooks/1369680016367161465/ytWtBI3H3EKVrjifey0KMsJ05wEtuy1cdMV7EvJ5OX6cb128k36s17sS8EYM7pCXkxkg",
+        webhook = "https://discord.com/api/webhooks/1372211950334906499/_fEmj8oGQ8x4v2kUYeweBlpGdoaCoJ6tIs59BfsBUBeApzBax76neHeWmYbxZyDAXU5f",
         role_id = "", -- ID роли как строка
         luck = { "x25" },
         name = "Rainbow Egg"
     },
     ["nightmare-egg"] = {
-        webhook = "https://discord.com/api/webhooks/1369679913308655828/es2UQtG9m_FY_aYotNaVKpFNwDXj0IOakFJg3g8lQ107fAHPJWoUqvU_1_RLEpCGUmIJ",
+        webhook = "https://discord.com/api/webhooks/1372212037693866014/agJ1yjXiLDXZAuiJISTd4kr3cCuCRsXuxRVmx42YqrIXJ9qpUSe7wpM9U3-MTYblwQsk",
         role_id = "",
         luck = { "x25" },
         name = "Nightmare Egg"
     },
     ["void-egg"] = {
-        webhook = "https://discord.com/api/webhooks/1369680094322364446/vkkzcYcVY30Tb-D2MRZMrQbR3d2U_0YCdevjgPR2QTaEjFcFs8b7uZbEi-C5u60Bum6N",
+        webhook = "https://discord.com/api/webhooks/1372211864133701642/nn8YJOJs5BleUhifO-hA0UNI3nIqnzBlHrhFSTOiibxQBGBjjvMTL8bY9jTciCbjUlNL",
         role_id = "",
         luck = { "x25" },
         name = "Void Egg"
     },
     ["royal-chest"] = {
-        webhook = "https://discord.com/api/webhooks/1369320116969541702/217cjweQ3Aga1IwwBzClwuNpe2KoXRKOq2IJMCV9sgzlEpd9iYHH2UJ89IT4qq8smumE",
+        webhook = "https://discord.com/api/webhooks/1372212119629463753/oVq84wDoSWkyoraVjkYsdsxTBRx1bL3Ui1vUv8eAN7FJNb0Fil27LCOEF5BUT-ZP4Fx_",
         role_id = "1371539682713796648",
         name = "Royal Chest"
     },
     ["bubble-rift"] = {
-        webhook = "https://discord.com/api/webhooks/1369680404487077958/pNTDbV_qBHqzTKXrxagTlqMyFgc13qmtRha8ca1Fkn9AdlnFgjT977lDU9A8Tavw1Ju9",
+        webhook = "https://discord.com/api/webhooks/1372211352357179432/7E34K-TjOiIBvKwze6XcknyeMZr73rN77eGJ1iinqCs6noRMvmNIwm3rGH4_OemmtSah",
         role_id = "",
-        name = "Bubble Rifft"
+        name = "Bubble Rift"
     },
     ["mining-egg"] = {
-        webhook = "https://discord.com/api/webhooks/1369680163113140354/KSzLYRiJMmYeeGOv4aSekxlVxrxihddZrvyJ_AfAtwDZsLCCYwXMvYq7HrEfP1N6tJjH",
+        webhook = "https://discord.com/api/webhooks/1372211772303609896/PinWw2B_ppgV8JsspqCsfFEx8kbK1ozGZEywUFaO5KjTndjm3FvpE_l6V2XO3_XH_amI",
         role_id = "",
         luck = { "x25" },
         name = "Mining Egg"
     },
     ["cyber-egg"] = {
-        webhook = "https://discord.com/api/webhooks/1369680252145504256/OEFlHbKAzOuz6kZ97gcgsNyDrBR6wMBNlwiaIXWVNTeXUM5yIDLPGstTawfPE4Lx6a6R",
+        webhook = "https://discord.com/api/webhooks/1372211676283273336/Xxiew3FwtHoGld268v6yI46y0AlS9rVlKbjDIIPWLAugNRCO-aN_G7MkXd0z9auQksud",
         role_id = "1371540351361482802",
         luck = { "x25" },
         name = "Cyber Egg"
     },
-    ["dice-chest"] = {
-        webhook = "https://discord.com/api/webhooks/1369680321729138718/s6R5cyeB3k9sBAD4Akxaem86xzxW4-6lNWgs-V5P2TDH86pxWl7mT1Wwvs-XfN4O-GVS",
+    ["dice-rift"] = {
+        webhook = "https://discord.com/api/webhooks/1372211539167281244/CcP3FgYKV-sZAMmtrtu4z5J5wJJ-SCGUAfavJSvyOc-L4uciHxvIiVmsnCMnpUabrb2s",
         role_id = "1371539732022169601",
-        name = "Dice Chest"
+        name = "Dice Rift"
     },
     ["underworld-1"] = {
-        webhook = "https://discord.com/api/webhooks/1371074619645235243/u_0v1rptBiojPUlQSSwaA7zoIbryx-4qEK1JZaaJkKd82T9Mo4VWMN3hyD6beszMNcYY",
+        webhook = "https://discord.com/api/webhooks/1372273163680874496/vyXpeJcgm6yJFpnIpv9Un-Pt4WOnS8zAmKXk7KuqkCCri8AElQ2LTjx3vZH912KKM7iQ",
         role_id = "1371510979116007545",
         luck = { "x25" },
         name = "Underworld 1"
     },
     ["underworld-2"] = {
-        webhook = "https://discord.com/api/webhooks/1371074619645235243/u_0v1rptBiojPUlQSSwaA7zoIbryx-4qEK1JZaaJkKd82T9Mo4VWMN3hyD6beszMNcYY",
+        webhook = "https://discord.com/api/webhooks/1372273163680874496/vyXpeJcgm6yJFpnIpv9Un-Pt4WOnS8zAmKXk7KuqkCCri8AElQ2LTjx3vZH912KKM7iQ",
         role_id = "1371510979116007545",
         luck = { "x25" },
         name = "Underworld 2"
     },
     ["underworld-3"] = {
-        webhook = "https://discord.com/api/webhooks/1371074619645235243/u_0v1rptBiojPUlQSSwaA7zoIbryx-4qEK1JZaaJkKd82T9Mo4VWMN3hyD6beszMNcYY",
+        webhook = "https://discord.com/api/webhooks/1372273163680874496/vyXpeJcgm6yJFpnIpv9Un-Pt4WOnS8zAmKXk7KuqkCCri8AElQ2LTjx3vZH912KKM7iQ",
         role_id = "1371510979116007545",
         luck = { "x25" },
         name = "Underworld 3"
@@ -152,13 +152,11 @@ local whitelisted_eggs = { -- теперь тут меняешь вебхуки 
 };
 local spam_messages = {
     "Best Rift Finder = ģģ/ easyrift 🔥",
-    "Silly Egg is found! ģģ/ easyrift 🔥",
+    "Underworld Egg is found! ģģ/ easyrift 🔥",
     "Best Pet Shop = ģģ/ easyrift 🔥",
     "REACH THE LEADERBOARDS USING ğğ/ easyrift 🏆",
     "SECRETS GIVE-AWAY HAPPENING ģģ/ easyrift 🌟",
-    "X25 LUCK RIFTS AT ģģ/ easyrift 🍀",
-    "GET SILLY EGG AT ģģ/ easyrift 🥚",
-    "UNDERWORLD RIFT ģģ/ easyrift 🥚"
+    "X25 LUCK RIFTS AT ģģ/ easyrift 🍀"
 };
 
 local join_link = string.format('https://www.roblox.com/games/start?placeId=16302670534&launchData=%d/%s', game.PlaceId, game.JobId);
@@ -204,7 +202,7 @@ end
 local serverhop = function()
     -- Добавляем случайную задержку для рассинхронизации аккаунтов
     if getgenv().ServerHopSettings.use_random_offset then
-        local random_delay = math.random(3, 15)
+        local random_delay = math.random(1, 3) -- Уменьшено с 3-15 до 1-3 секунд для быстрого хопа
         print("Adding random delay before server hop:", random_delay, "seconds")
         wait(random_delay)
     end
@@ -223,7 +221,7 @@ local serverhop = function()
         
         local new_history = {};
         for serverId, jt in pairs(history) do
-            if current_time - jt < 540 then
+            if current_time - jt < 300 then -- Уменьшено с 540 до 300 секунд (5 минут)
                 new_history[serverId] = jt;
             end
         end
@@ -274,17 +272,13 @@ local serverhop = function()
             game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, selected_server.id, local_player);
         else
             print("No suitable servers found, trying public teleport")
-            repeat
-                game:GetService("TeleportService"):Teleport(game.PlaceId, local_player);
-                task.wait(20);
-            until game:FindFirstChild("NetworkClient") ~= nil;
+            game:GetService("TeleportService"):Teleport(game.PlaceId, local_player);
+            -- Убираем бесконечный цикл, который может зависнуть
         end
     else
         print("Error fetching servers, trying public teleport")
-        repeat
-            game:GetService("TeleportService"):Teleport(game.PlaceId, local_player);
-            task.wait(20);
-        until game:FindFirstChild("NetworkClient") ~= nil;
+        game:GetService("TeleportService"):Teleport(game.PlaceId, local_player);
+        -- Убираем бесконечный цикл, который может зависнуть
     end
 end
 
@@ -308,10 +302,13 @@ task.spawn(function()
     end
 end)
 
--- Серверхоп каждые 2 минуты
+-- Серверхоп каждые 15 секунд вместо 2 минут
 task.spawn(function()
+    -- Добавляем небольшую начальную задержку, чтобы не перепрыгивать сразу
+    task.wait(3)
+    
     while true do
-        task.wait(5) -- Проверяем каждые 5 секунд
+        task.wait(1) -- Проверяем каждую секунду для более точного срабатывания
         local current_time = os.time()
         local elapsed_time = current_time - getgenv().ServerHopSettings.last_hop_time
         
@@ -383,6 +380,8 @@ do
         local time = os.time() + parse_time(gui.Timer.Text);
         local discord_time = time_to_discorddate(time);
         local height = math.floor(rift:GetPivot().Position.Y) - 4;
+        
+        -- Изменено: добавлена кнопка и убрано поле с join_link
         local message = {
             -- Исправление формата упоминания роли - прямое использование без форматирования
             ['content'] = data.role_id and data.role_id ~= "" and ("<@&" .. data.role_id .. ">") or "",
@@ -411,14 +410,28 @@ do
                         {
                             ['name'] = "**🍀 Luck**",
                             ['value'] = string.format("`%s`", luck)
-                        },
-                        {
-                            ['name'] = "**🔗 Join link**",
-                            ['value'] = join_link
                         }
+                        -- Поле "Join link" убрано, так как используется кнопка
                     },
                     ['color'] = 4508791,
-                    ['timestamp'] = DateTime.now():ToIsoDate()
+                    ['timestamp'] = DateTime.now():ToIsoDate(),
+                    ['footer'] = {
+                        ['text'] = "gg/easyrift • " .. os.date("%H:%M", os.time())
+                    }
+                }
+            },
+            -- Добавляем компоненты для кнопки Join Game
+            ['components'] = {
+                {
+                    ['type'] = 1, -- ActionRow тип
+                    ['components'] = {
+                        {
+                            ['type'] = 2, -- Button тип
+                            ['style'] = 5, -- Link button стиль
+                            ['label'] = "Join", -- текст кнопки
+                            ['url'] = join_link -- ссылка для перехода
+                        }
+                    }
                 }
             }
         };
@@ -442,6 +455,15 @@ do
     
     -- Не делаем моментальный серверхоп здесь, так как работает таймер
 end
+
+-- Добавляем принудительный серверхоп через 30 секунд после запуска, если по каким-то причинам обычный таймер не сработал
+task.spawn(function()
+    task.wait(30)
+    if os.time() - getgenv().ServerHopSettings.last_hop_time >= 30 then
+        print("Forced server hop after 30 seconds")
+        serverhop()
+    end
+end)
 
 game:GetService("CoreGui"):FindFirstChild("RobloxPromptGui"):FindFirstChild("promptOverlay").ChildAdded:Connect(function(child) -- при кике игрой
     serverhop();
