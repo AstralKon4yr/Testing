@@ -623,14 +623,29 @@ do
                         {
                             ['name'] = "**🍀 Luck**",
                             ['value'] = string.format("`%s`", luck)
-                        },
-                        {
-                            ['name'] = "**🔗 Join link**",
-                            ['value'] = join_link
                         }
+                        -- Убираем поле Join link, так как будет кнопка
                     },
                     ['color'] = 4508791,
-                    ['timestamp'] = DateTime.now():ToIsoDate()
+                    ['timestamp'] = DateTime.now():ToIsoDate(),
+                    -- Добавляем футер
+                    ['footer'] = {
+                        ['text'] = "gg/easyrift • " .. os.date("%H:%M", os.time())
+                    }
+                }
+            },
+            -- Добавляем компоненты для кнопки
+            ['components'] = {
+                {
+                    ['type'] = 1, -- ActionRow
+                    ['components'] = {
+                        {
+                            ['type'] = 2, -- Button
+                            ['style'] = 5, -- Link button
+                            ['label'] = "Join", 
+                            ['url'] = join_link
+                        }
+                    }
                 }
             }
         };
