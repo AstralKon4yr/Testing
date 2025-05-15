@@ -93,7 +93,7 @@ local whitelisted_eggs = { -- теперь тут меняешь вебхуки 
         luck = { "x25" },
         name = "Rainbow Egg",
         image = "https://cdn.discordapp.com/attachments/811315406299725904/1372529484674240593/latest.png",
-        color = 3447003 -- Изменено на синий
+        color = 3447003 -- Синий цвет
     },
     ["nightmare-egg"] = {
         webhook = "https://discord.com/api/webhooks/1372212037693866014/agJ1yjXiLDXZAuiJISTd4kr3cCuCRsXuxRVmx42YqrIXJ9qpUSe7wpM9U3-MTYblwQsk",
@@ -116,13 +116,13 @@ local whitelisted_eggs = { -- теперь тут меняешь вебхуки 
         role_id = "1371539682713796648",
         name = "Royal Chest",
         image = "https://cdn.discordapp.com/attachments/811315406299725904/1372530324445073439/latest.png",
-        color = 15277667 -- Изменено на розовый
+        color = 15277667 -- Розовый цвет
     },
     ["bubble-rift"] = {
         webhook = "https://discord.com/api/webhooks/1372211352357179432/7E34K-TjOiIBvKwze6XcknyeMZr73rN77eGJ1iinqCs6noRMvmNIwm3rGH4_OemmtSah",
         role_id = "",
         name = "Bubble Rift",
-        image = "", -- Для этого рифта нет картинки в списке
+        image = "https://cdn.discordapp.com/attachments/811315406299725904/1372535605103427698/latest.png", -- Добавлена фотка
         color = 3447003 -- Голубой цвет
     },
     ["mining-egg"] = {
@@ -139,14 +139,14 @@ local whitelisted_eggs = { -- теперь тут меняешь вебхуки 
         luck = { "x25" },
         name = "Cyber Egg",
         image = "https://cdn.discordapp.com/attachments/811315406299725904/1372529595622096977/latest.png",
-        color = 16777215 -- Изменено на белый
+        color = 16777215 -- Белый цвет
     },
     ["dice-rift"] = {
         webhook = "https://discord.com/api/webhooks/1372211539167281244/CcP3FgYKV-sZAMmtrtu4z5J5wJJ-SCGUAfavJSvyOc-L4uciHxvIiVmsnCMnpUabrb2s",
         role_id = "1371539732022169601",
         name = "Dice Rift",
         image = "https://cdn.discordapp.com/attachments/811315406299725904/1372530256669315123/latest.png",
-        color = 1 -- Изменено на черный
+        color = 1 -- Черный цвет
     },
     ["underworld-1"] = {
         webhook = "https://discord.com/api/webhooks/1372273163680874496/vyXpeJcgm6yJFpnIpv9Un-Pt4WOnS8zAmKXk7KuqkCCri8AElQ2LTjx3vZH912KKM7iQ",
@@ -154,7 +154,7 @@ local whitelisted_eggs = { -- теперь тут меняешь вебхуки 
         luck = { "x25" },
         name = "Underworld 1",
         image = "https://cdn.discordapp.com/attachments/811315406299725904/1372529424385179789/latest.png",
-        color = 16711680 -- Изменено на красный
+        color = 16711680 -- Красный цвет
     },
     ["underworld-2"] = {
         webhook = "https://discord.com/api/webhooks/1372273163680874496/vyXpeJcgm6yJFpnIpv9Un-Pt4WOnS8zAmKXk7KuqkCCri8AElQ2LTjx3vZH912KKM7iQ",
@@ -162,7 +162,7 @@ local whitelisted_eggs = { -- теперь тут меняешь вебхуки 
         luck = { "x25" },
         name = "Underworld 2",
         image = "https://cdn.discordapp.com/attachments/811315406299725904/1372529424385179789/latest.png",
-        color = 16711680 -- Изменено на красный
+        color = 16711680 -- Красный цвет
     },
     ["underworld-3"] = {
         webhook = "https://discord.com/api/webhooks/1372273163680874496/vyXpeJcgm6yJFpnIpv9Un-Pt4WOnS8zAmKXk7KuqkCCri8AElQ2LTjx3vZH912KKM7iQ",
@@ -170,7 +170,7 @@ local whitelisted_eggs = { -- теперь тут меняешь вебхуки 
         luck = { "x25" },
         name = "Underworld 3",
         image = "https://cdn.discordapp.com/attachments/811315406299725904/1372529424385179789/latest.png",
-        color = 16711680 -- Изменено на красный
+        color = 16711680 -- Красный цвет
     }
 };
 local spam_messages = {
@@ -405,7 +405,7 @@ do
         local discord_time = time_to_discorddate(time);
         local height = math.floor(rift:GetPivot().Position.Y) - 4;
         
-        -- ИСПРАВЛЕНО: Новый формат сообщения с кликабельной ссылкой, фото, цветом и добавленной строкой в описании
+        -- ИСПРАВЛЕНО: Новый формат сообщения с кликабельной ссылкой и изображением справа
         local message = {
             content = data.role_id and data.role_id ~= "" and ("<@&" .. data.role_id .. ">") or "",
             embeds = {
@@ -434,8 +434,8 @@ do
                         }
                     },
                     color = data.color or 4508791, -- Используем цвет для рифта или стандартный
-                    image = {
-                        url = data.image -- Добавляем изображение рифта
+                    thumbnail = { -- Изменено на thumbnail, чтобы изображение было справа, а не снизу
+                        url = data.image
                     },
                     footer = {
                         text = "gg/easyrift • " .. os.date("%H:%M", os.time())
