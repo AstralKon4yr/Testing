@@ -405,13 +405,13 @@ do
         local discord_time = time_to_discorddate(time);
         local height = math.floor(rift:GetPivot().Position.Y) - 4;
         
-        -- ИСПРАВЛЕНО: Новый формат сообщения с кликабельной ссылкой и изображением справа
+        -- Новый формат сообщения с добавленной кнопкой-ссылкой
         local message = {
             content = data.role_id and data.role_id ~= "" and ("<@&" .. data.role_id .. ">") or "",
             embeds = {
                 {
                     title = data.name .. " has been found!",
-                    description = "**[🔗 Click here to join](" .. join_link .. ")**\n\n🪄Tutorial how to join pinned in https://discord.com/channels/1279491047616938005/1369315912049492069",
+                    description = "🪄 Tutorial how to join pinned in <#1369315912049492069>",
                     fields = {
                         {
                             name = "⏲ Expires in",
@@ -433,12 +433,26 @@ do
                             value = luck
                         }
                     },
-                    color = data.color or 4508791, -- Используем цвет для рифта или стандартный
-                    thumbnail = { -- Изменено на thumbnail, чтобы изображение было справа, а не снизу
+                    color = data.color or 4508791,
+                    thumbnail = {
                         url = data.image
                     },
                     footer = {
                         text = "gg/easyrift • " .. os.date("%H:%M", os.time())
+                    }
+                }
+            },
+            -- Добавляем компоненты (кнопки) в сообщение
+            components = {
+                {
+                    type = 1, -- ActionRow
+                    components = {
+                        {
+                            type = 2, -- Button
+                            style = 5, -- LINK (5)
+                            label = "🔗 Click to Join Server",
+                            url = join_link
+                        }
                     }
                 }
             }
