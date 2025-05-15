@@ -91,64 +91,86 @@ local whitelisted_eggs = { -- теперь тут меняешь вебхуки 
         webhook = "https://discord.com/api/webhooks/1372211950334906499/_fEmj8oGQ8x4v2kUYeweBlpGdoaCoJ6tIs59BfsBUBeApzBax76neHeWmYbxZyDAXU5f",
         role_id = "", -- ID роли как строка
         luck = { "x25" },
-        name = "Rainbow Egg"
+        name = "Rainbow Egg",
+        image = "https://cdn.discordapp.com/attachments/811315406299725904/1372529484674240593/latest.png",
+        color = 15277667 -- Розовый цвет
     },
     ["nightmare-egg"] = {
         webhook = "https://discord.com/api/webhooks/1372212037693866014/agJ1yjXiLDXZAuiJISTd4kr3cCuCRsXuxRVmx42YqrIXJ9qpUSe7wpM9U3-MTYblwQsk",
         role_id = "",
         luck = { "x25" },
-        name = "Nightmare Egg"
+        name = "Nightmare Egg",
+        image = "https://cdn.discordapp.com/attachments/811315406299725904/1372529530258063370/latest.png",
+        color = 10027008 -- Темно-синий цвет
     },
     ["void-egg"] = {
         webhook = "https://discord.com/api/webhooks/1372211864133701642/nn8YJOJs5BleUhifO-hA0UNI3nIqnzBlHrhFSTOiibxQBGBjjvMTL8bY9jTciCbjUlNL",
         role_id = "",
         luck = { "x25" },
-        name = "Void Egg"
+        name = "Void Egg",
+        image = "https://cdn.discordapp.com/attachments/811315406299725904/1372529558158573609/latest.png",
+        color = 3355443 -- Темно-серый цвет
     },
     ["royal-chest"] = {
         webhook = "https://discord.com/api/webhooks/1372212119629463753/oVq84wDoSWkyoraVjkYsdsxTBRx1bL3Ui1vUv8eAN7FJNb0Fil27LCOEF5BUT-ZP4Fx_",
         role_id = "1371539682713796648",
-        name = "Royal Chest"
+        name = "Royal Chest",
+        image = "https://cdn.discordapp.com/attachments/811315406299725904/1372530324445073439/latest.png",
+        color = 16766720 -- Золотой цвет
     },
     ["bubble-rift"] = {
         webhook = "https://discord.com/api/webhooks/1372211352357179432/7E34K-TjOiIBvKwze6XcknyeMZr73rN77eGJ1iinqCs6noRMvmNIwm3rGH4_OemmtSah",
         role_id = "",
-        name = "Bubble Rift"
+        name = "Bubble Rift",
+        image = "", -- Для этого рифта нет картинки в списке
+        color = 3447003 -- Голубой цвет
     },
     ["mining-egg"] = {
         webhook = "https://discord.com/api/webhooks/1372211772303609896/PinWw2B_ppgV8JsspqCsfFEx8kbK1ozGZEywUFaO5KjTndjm3FvpE_l6V2XO3_XH_amI",
         role_id = "",
         luck = { "x25" },
-        name = "Mining Egg"
+        name = "Mining Egg",
+        image = "https://cdn.discordapp.com/attachments/811315406299725904/1372529638022320148/latest.png",
+        color = 7506394 -- Коричневый цвет
     },
     ["cyber-egg"] = {
         webhook = "https://discord.com/api/webhooks/1372211676283273336/Xxiew3FwtHoGld268v6yI46y0AlS9rVlKbjDIIPWLAugNRCO-aN_G7MkXd0z9auQksud",
         role_id = "1371540351361482802",
         luck = { "x25" },
-        name = "Cyber Egg"
+        name = "Cyber Egg",
+        image = "https://cdn.discordapp.com/attachments/811315406299725904/1372529595622096977/latest.png",
+        color = 3066993 -- Зеленый цвет
     },
     ["dice-rift"] = {
         webhook = "https://discord.com/api/webhooks/1372211539167281244/CcP3FgYKV-sZAMmtrtu4z5J5wJJ-SCGUAfavJSvyOc-L4uciHxvIiVmsnCMnpUabrb2s",
         role_id = "1371539732022169601",
-        name = "Dice Rift"
+        name = "Dice Rift",
+        image = "https://cdn.discordapp.com/attachments/811315406299725904/1372530256669315123/latest.png",
+        color = 15158332 -- Красноватый цвет
     },
     ["underworld-1"] = {
         webhook = "https://discord.com/api/webhooks/1372273163680874496/vyXpeJcgm6yJFpnIpv9Un-Pt4WOnS8zAmKXk7KuqkCCri8AElQ2LTjx3vZH912KKM7iQ",
         role_id = "1371510979116007545",
         luck = { "x25" },
-        name = "Underworld 1"
+        name = "Underworld 1",
+        image = "https://cdn.discordapp.com/attachments/811315406299725904/1372529424385179789/latest.png",
+        color = 15105570 -- Оранжевый цвет
     },
     ["underworld-2"] = {
         webhook = "https://discord.com/api/webhooks/1372273163680874496/vyXpeJcgm6yJFpnIpv9Un-Pt4WOnS8zAmKXk7KuqkCCri8AElQ2LTjx3vZH912KKM7iQ",
         role_id = "1371510979116007545",
         luck = { "x25" },
-        name = "Underworld 2"
+        name = "Underworld 2",
+        image = "https://cdn.discordapp.com/attachments/811315406299725904/1372529424385179789/latest.png",
+        color = 15105570 -- Оранжевый цвет
     },
     ["underworld-3"] = {
         webhook = "https://discord.com/api/webhooks/1372273163680874496/vyXpeJcgm6yJFpnIpv9Un-Pt4WOnS8zAmKXk7KuqkCCri8AElQ2LTjx3vZH912KKM7iQ",
         role_id = "1371510979116007545",
         luck = { "x25" },
-        name = "Underworld 3"
+        name = "Underworld 3",
+        image = "https://cdn.discordapp.com/attachments/811315406299725904/1372529424385179789/latest.png",
+        color = 15105570 -- Оранжевый цвет
     }
 };
 local spam_messages = {
@@ -383,7 +405,7 @@ do
         local discord_time = time_to_discorddate(time);
         local height = math.floor(rift:GetPivot().Position.Y) - 4;
         
-        -- ИСПРАВЛЕНО: Новый формат сообщения с кликабельной ссылкой в описании
+        -- ИСПРАВЛЕНО: Новый формат сообщения с кликабельной ссылкой, фото и цветом
         local message = {
             content = data.role_id and data.role_id ~= "" and ("<@&" .. data.role_id .. ">") or "",
             embeds = {
@@ -411,7 +433,10 @@ do
                             value = luck
                         }
                     },
-                    color = 4508791,
+                    color = data.color or 4508791, -- Используем цвет для рифта или стандартный
+                    image = {
+                        url = data.image -- Добавляем изображение рифта
+                    },
                     footer = {
                         text = "gg/easyrift • " .. os.date("%H:%M", os.time())
                     }
