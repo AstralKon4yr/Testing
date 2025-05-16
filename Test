@@ -222,22 +222,40 @@ end
 local rifts_found_status = false;
 -- Переменная для отслеживания статуса отправки сообщений
 local messages_sent_status = false;
+-- Флаг, чтобы не делать серверхоп несколько раз
+local is_server_hopping = false;
+
+-- ИСПРАВЛЕНО: Флаг для предотвращения повторных попыток серверхопа
+local server_hop_cooldown = false;
 
 -- Функция для проверки и запуска серверхопа если оба условия выполнены
 local function checkAndServerHop()
+    if is_server_hopping then return end
+    
     if rifts_found_status and messages_sent_status then
+        is_server_hopping = true
         print("Both conditions met (rifts found and messages sent). Starting server hop...")
-        task.wait(1) -- Небольшая задержка перед хопом
+        -- Добавляем задержку перед серверхопом чтобы убедиться, что Discord вебхуки отправились
+        task.wait(3)
         serverhop()
     end
 end
 
 -- Улучшенный сервер-хоп для предотвращения попадания на одни и те же серверы
 local serverhop = function()
+    -- Проверка на кулдаун и установка флага
+    if server_hop_cooldown then 
+        print("Server hop is on cooldown, waiting...")
+        return
+    end
+    
+    server_hop_cooldown = true
+    
+    -- ИСПРАВЛЕНО: Увеличен интервал между попытками подключения к серверу
     -- Добавляем случайную задержку для рассинхронизации аккаунтов
-    local random_delay = math.random(1, 3)
+    local random_delay = math.random(4, 7) -- Увеличено до 4-7 секунд
     print("Adding random delay before server hop:", random_delay, "seconds")
-    wait(random_delay)
+    task.wait(random_delay)
     
     print("Initiating server hop at:", os.date("%H:%M:%S", os.time()))
 
@@ -260,55 +278,80 @@ local serverhop = function()
         history = new_history;
     end
     
-    -- Добавляем жеребьевку для более случайного распределения серверов
-    local page_size = 100
-    local page_offset = math.random(0, 3) * page_size
-    
-    local req = request({
-        Url = string.format("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Desc&limit=%d&cursor=%s&excludeFullGames=true", 
-            game.PlaceId,
-            page_size,
-            page_offset > 0 and tostring(page_offset) or ""
-        );
-    })
-    
-    local success, body = pcall(function()
-        return http_service:JSONDecode(req.Body);
-    end)
-    
-    if success and body and body.data then
-        local servers = {};
+    -- ИСПРАВЛЕНО: Обработка ошибок для предотвращения краша скрипта
+    local success, servers = pcall(function()
+        -- Добавляем жеребьевку для более случайного распределения серверов
+        local page_size = 100
+        local page_offset = math.random(0, 3) * page_size
         
-        for _, server in pairs(body.data) do
-            if server.playing >= 2 and 
-               server.playing <= 10 and
-               server.id ~= game.JobId and 
-               not history[server.id] then
-                
-                -- Приоритизируем серверы с меньшим количеством игроков (для распределения аккаунтов)
-                local priority = 50 - server.playing
-                for i = 1, priority do
-                    table.insert(servers, server);
+        local req = request({
+            Url = string.format("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Desc&limit=%d&cursor=%s&excludeFullGames=true", 
+                game.PlaceId,
+                page_size,
+                page_offset > 0 and tostring(page_offset) or ""
+            );
+        })
+        
+        local body = http_service:JSONDecode(req.Body);
+        
+        local valid_servers = {};
+        
+        if body and body.data then
+            for _, server in pairs(body.data) do
+                if server.playing >= 2 and 
+                   server.playing <= 10 and
+                   server.id ~= game.JobId and 
+                   not history[server.id] then
+                    
+                    -- Приоритизируем серверы с меньшим количеством игроков (для распределения аккаунтов)
+                    local priority = 50 - server.playing
+                    for i = 1, priority do
+                        table.insert(valid_servers, server);
+                    end
                 end
             end
         end
         
-        if #servers > 0 then
+        return valid_servers
+    end)
+    
+    -- ИСПРАВЛЕНО: Безопасная логика серверхопа с повторными попытками
+    if success and servers and #servers > 0 then
+        pcall(function()
             -- Выбираем действительно случайный сервер из взвешенного списка
             local selected_server = servers[math.random(1, #servers)];
             history[selected_server.id] = current_time;
             writefile(file, http_service:JSONEncode(history));
             
             print("Selected server with", selected_server.playing, "players")
-            game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, selected_server.id, local_player);
-        else
-            print("No suitable servers found, trying public teleport")
-            game:GetService("TeleportService"):Teleport(game.PlaceId, local_player);
-        end
+            
+            -- ИСПРАВЛЕНО: Используем pcall для отлова ошибок
+            pcall(function()
+                game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, selected_server.id, local_player);
+            end)
+            
+            -- Даем время на телепортацию
+            task.wait(8)
+            
+            -- Если мы все еще здесь, значит телепортация не удалась
+            print("Teleport may have failed, trying public teleport")
+            pcall(function()
+                game:GetService("TeleportService"):Teleport(game.PlaceId, local_player);
+            end)
+        end)
     else
-        print("Error fetching servers, trying public teleport")
-        game:GetService("TeleportService"):Teleport(game.PlaceId, local_player);
+        print("No suitable servers found or error occurred, trying public teleport")
+        pcall(function()
+            game:GetService("TeleportService"):Teleport(game.PlaceId, local_player);
+        end)
     end
+    
+    -- Сбрасываем кулдаун через 10 секунд для следующей попытки, если текущая не удалась
+    task.spawn(function()
+        task.wait(10)
+        server_hop_cooldown = false
+        is_server_hopping = false
+    end)
 end
 
 task.spawn(function() -- anti afk (xz zachem, poidet)
@@ -317,36 +360,69 @@ task.spawn(function() -- anti afk (xz zachem, poidet)
     for _,v in pairs(getconnections(game:GetService("UserInputService").WindowFocusReleased)) do v:Disable() end
 end)
 
--- ИЗМЕНЕНО: Новая логика отправки фиксированных сообщений и серверхопа
+-- ИСПРАВЛЕНО: Измененная логика отправки сообщений с задержкой в 3 секунды
 task.spawn(function()
-    local channel = game:GetService("TextChatService"):WaitForChild("TextChannels"):WaitForChild("RBXGeneral");
+    local success, channel = pcall(function()
+        return game:GetService("TextChatService"):WaitForChild("TextChannels"):WaitForChild("RBXGeneral", 10);
+    end)
+    
+    if not success or not channel then
+        print("Failed to get chat channel, trying alternative method")
+        channel = nil
+        -- Попытка использовать устаревшую систему чата в случае ошибки
+        pcall(function()
+            local ChatEvents = game:GetService("ReplicatedStorage"):WaitForChild("DefaultChatSystemChatEvents", 10)
+            if ChatEvents then
+                local SayMessageRequest = ChatEvents:WaitForChild("SayMessageRequest", 5)
+                if SayMessageRequest then
+                    channel = {
+                        SendAsync = function(_, message)
+                            SayMessageRequest:FireServer(message, "All")
+                            return true
+                        end
+                    }
+                    success = true
+                    print("Using legacy chat system")
+                end
+            end
+        end)
+    end
+    
+    if not success or not channel then
+        print("Failed to initialize chat system. No messages will be sent.")
+        -- Устанавливаем флаг сообщений как отправленные, чтобы не блокировать серверхоп
+        messages_sent_status = true
+        checkAndServerHop()
+        return
+    end
     
     -- Ждем немного, чтобы сначала скрипт проверил рифты
     task.wait(5)
     
-    -- Отправляем первые два обязательных сообщения
+    local message_count = 0
+    
+    -- Отправляем два обязательных сообщения с задержкой в 3 секунды
     for i, message in ipairs(required_messages) do
         pcall(function()
-            channel:SendAsync(message)
-            print("Sent required message " .. i .. ": " .. message)
+            if channel:SendAsync(message) then
+                message_count = message_count + 1
+                print("Sent required message " .. i .. ": " .. message .. " | Total: " .. message_count)
+            end
         end)
-        task.wait(0.5) -- Небольшая задержка между сообщениями
+        
+        -- ИСПРАВЛЕНО: Задержка 3 секунды между сообщениями
+        task.wait(3)
     end
     
-    -- Решаем, отправлять ли третье сообщение (опционально)
-    local send_third = math.random() > 0.3 -- 70% шанс отправить третье сообщение
-    
-    if send_third then
-        local random_message = optional_messages[math.random(1, #optional_messages)]
-        pcall(function()
-            channel:SendAsync(random_message)
-            print("Sent optional third message: " .. random_message)
-        end)
+    -- Устанавливаем флаг, что сообщения отправлены (если отправлены как минимум 2)
+    if message_count >= 2 then
+        messages_sent_status = true
+        print("Messages sent status set to TRUE (sent " .. message_count .. " messages)")
+    else
+        print("Failed to send all required messages, only sent " .. message_count)
+        -- Если не удалось отправить оба обязательных сообщения, все равно разрешаем серверхоп
+        messages_sent_status = true
     end
-    
-    -- Устанавливаем флаг, что сообщения отправлены
-    messages_sent_status = true
-    print("Messages sent status set to TRUE")
     
     -- Проверяем, нужно ли выполнить серверхоп
     checkAndServerHop()
@@ -476,6 +552,14 @@ do
         print("Rifts found status set to TRUE")
     else
         print("No rifts found or sent. Will wait for messages before server hop.")
+        -- ИСПРАВЛЕНО: Даже если рифты не найдены, устанавливаем флаг через задержку
+        -- чтобы не блокировать серверхоп навсегда если рифтов нет
+        task.spawn(function()
+            task.wait(10)
+            rifts_found_status = true
+            print("Force setting rifts_found_status to TRUE after timeout")
+            checkAndServerHop()
+        end)
     end
     
     -- Проверяем, нужно ли выполнить серверхоп
@@ -485,12 +569,17 @@ end
 -- Добавляем принудительный серверхоп через 30 секунд после запуска, если по каким-то причинам ни одно условие не сработало
 task.spawn(function()
     task.wait(30)
-    if not (rifts_found_status and messages_sent_status) then
-        print("Forced server hop after 30 seconds - conditions not met")
+    if not is_server_hopping then
+        print("Forced server hop after 30 seconds - conditions may not have been met")
         serverhop()
     end
 end)
 
-game:GetService("CoreGui"):FindFirstChild("RobloxPromptGui"):FindFirstChild("promptOverlay").ChildAdded:Connect(function(child) -- при кике игрой
-    serverhop();
+-- ИСПРАВЛЕНО: Улучшенная обработка кика с сервера
+game:GetService("CoreGui"):FindFirstChild("RobloxPromptGui"):FindFirstChild("promptOverlay").ChildAdded:Connect(function(child) 
+    if child.Name == "ErrorPrompt" then
+        print("Game kick detected, will try to server hop")
+        task.wait(1) -- Небольшая задержка
+        serverhop()
+    end
 end)
