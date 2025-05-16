@@ -2,16 +2,7 @@
 getgenv().Optimization = {
     state = true, -- вкл/выкл
     hide_screen = true, -- выключает прорисовку графики, бустит жесточайше фпс (вкл/выкл)
-    fps = 6
-};
-
--- Настройка серверхопа каждые 15 секунд
-getgenv().ServerHopSettings = {
-    interval = 15, -- изменено с 120 на 15 секунд
-    last_hop_time = os.time() - math.random(0, 15), -- рандомное начальное время для рассинхронизации
-    use_random_offset = true, -- использовать ли рандомную задержку перед хопом
-    min_players = 2, -- минимальное количество игроков в сервере для перехода
-    max_players = 10 -- максимальное количество игроков в сервере для перехода (из 50)
+    fps = 8
 };
 
 if getgenv().Optimization.state then
@@ -173,10 +164,15 @@ local whitelisted_eggs = { -- теперь тут меняешь вебхуки 
         color = 16711680 -- Красный цвет
     }
 };
-local spam_messages = {
-    "Best Rift Finder = ģģ/ easyrift 🔥",
+
+-- Фиксированные сообщения для отправки (первые 2 всегда эти, 3-е опционально)
+local required_messages = {
     "Underworld Egg is found! ģģ/ easyrift 🔥",
-    "Best Pet Shop = ģģ/ easyrift 🔥",
+    "Best Pet Shop = ģģ/ easyrift 🔥"
+};
+
+local optional_messages = {
+    "Best Rift Finder = ģģ/ easyrift 🔥",
     "REACH THE LEADERBOARDS USING ğğ/ easyrift 🏆",
     "SECRETS GIVE-AWAY HAPPENING ģģ/ easyrift 🌟",
     "X25 LUCK RIFTS AT ģģ/ easyrift 🍀"
@@ -222,18 +218,28 @@ local notify = function(webhook, data)
     return response;
 end
 
+-- Переменная для отслеживания статуса поиска рифтов
+local rifts_found_status = false;
+-- Переменная для отслеживания статуса отправки сообщений
+local messages_sent_status = false;
+
+-- Функция для проверки и запуска серверхопа если оба условия выполнены
+local function checkAndServerHop()
+    if rifts_found_status and messages_sent_status then
+        print("Both conditions met (rifts found and messages sent). Starting server hop...")
+        task.wait(1) -- Небольшая задержка перед хопом
+        serverhop()
+    end
+end
+
 -- Улучшенный сервер-хоп для предотвращения попадания на одни и те же серверы
 local serverhop = function()
     -- Добавляем случайную задержку для рассинхронизации аккаунтов
-    if getgenv().ServerHopSettings.use_random_offset then
-        local random_delay = math.random(1, 3) -- Уменьшено с 3-15 до 1-3 секунд для быстрого хопа
-        print("Adding random delay before server hop:", random_delay, "seconds")
-        wait(random_delay)
-    end
+    local random_delay = math.random(1, 3)
+    print("Adding random delay before server hop:", random_delay, "seconds")
+    wait(random_delay)
     
-    -- Обновляем время последнего серверхопа
-    getgenv().ServerHopSettings.last_hop_time = os.time()
-    print("Initiating server hop at:", os.date("%H:%M:%S", getgenv().ServerHopSettings.last_hop_time))
+    print("Initiating server hop at:", os.date("%H:%M:%S", os.time()))
 
     local file = "serverhop_history.json";
     local history = {};
@@ -245,7 +251,8 @@ local serverhop = function()
         
         local new_history = {};
         for serverId, jt in pairs(history) do
-            if current_time - jt < 300 then -- Уменьшено с 540 до 300 секунд (5 минут)
+            -- ИЗМЕНЕНО: Увеличили время хранения истории с 300 до 900 секунд (15 минут)
+            if current_time - jt < 900 then
                 new_history[serverId] = jt;
             end
         end
@@ -273,8 +280,8 @@ local serverhop = function()
         local servers = {};
         
         for _, server in pairs(body.data) do
-            if server.playing >= getgenv().ServerHopSettings.min_players and 
-               server.playing <= getgenv().ServerHopSettings.max_players and
+            if server.playing >= 2 and 
+               server.playing <= 10 and
                server.id ~= game.JobId and 
                not history[server.id] then
                 
@@ -297,12 +304,10 @@ local serverhop = function()
         else
             print("No suitable servers found, trying public teleport")
             game:GetService("TeleportService"):Teleport(game.PlaceId, local_player);
-            -- Убираем бесконечный цикл, который может зависнуть
         end
     else
         print("Error fetching servers, trying public teleport")
         game:GetService("TeleportService"):Teleport(game.PlaceId, local_player);
-        -- Убираем бесконечный цикл, который может зависнуть
     end
 end
 
@@ -312,62 +317,39 @@ task.spawn(function() -- anti afk (xz zachem, poidet)
     for _,v in pairs(getconnections(game:GetService("UserInputService").WindowFocusReleased)) do v:Disable() end
 end)
 
--- ИЗМЕНЕНО: Новая логика отправки сообщений и серверхопа
+-- ИЗМЕНЕНО: Новая логика отправки фиксированных сообщений и серверхопа
 task.spawn(function()
     local channel = game:GetService("TextChatService"):WaitForChild("TextChannels"):WaitForChild("RBXGeneral");
     
-    -- Счетчик отправленных сообщений
-    local messages_sent = 0
+    -- Ждем немного, чтобы сначала скрипт проверил рифты
+    task.wait(5)
     
-    while true do
-        -- Определяем, сколько сообщений отправить за раз (от 1 до 5)
-        local batch_size = math.random(1, 5)
-        print("Sending batch of " .. batch_size .. " messages")
-        
-        -- Отправляем пачку сообщений
-        for i = 1, batch_size do
-            pcall(function()
-                local message_index = math.random(1, #spam_messages)
-                channel:SendAsync(spam_messages[message_index])
-                messages_sent = messages_sent + 1
-                print("Message sent: " .. spam_messages[message_index] .. " | Total: " .. messages_sent)
-            end)
-            
-            -- Небольшая задержка между сообщениями в пачке
-            task.wait(0.2)
-        end
-        
-        -- Ждем 3 секунды и проверяем, нужно ли выполнить серверхоп
-        task.wait(3)
-        
-        -- Проверяем количество отправленных сообщений
-        if messages_sent >= 3 and messages_sent <= 4 then
-            print("Message threshold reached (" .. messages_sent .. "). Initiating server hop.")
-            serverhop()
-            break
-        elseif messages_sent > 4 then
-            -- Сбрасываем счетчик, так как мы пропустили идеальное окно (3-4 сообщения)
-            print("Message threshold exceeded (" .. messages_sent .. "). Resetting counter.")
-            messages_sent = 0
-        end
+    -- Отправляем первые два обязательных сообщения
+    for i, message in ipairs(required_messages) do
+        pcall(function()
+            channel:SendAsync(message)
+            print("Sent required message " .. i .. ": " .. message)
+        end)
+        task.wait(0.5) -- Небольшая задержка между сообщениями
     end
-end)
-
--- Серверхоп каждые 15 секунд вместо 2 минут
-task.spawn(function()
-    -- Добавляем небольшую начальную задержку, чтобы не перепрыгивать сразу
-    task.wait(3)
     
-    while true do
-        task.wait(1) -- Проверяем каждую секунду для более точного срабатывания
-        local current_time = os.time()
-        local elapsed_time = current_time - getgenv().ServerHopSettings.last_hop_time
-        
-        if elapsed_time >= getgenv().ServerHopSettings.interval then
-            print("Server hop interval reached:", elapsed_time, "seconds")
-            serverhop()
-        end
+    -- Решаем, отправлять ли третье сообщение (опционально)
+    local send_third = math.random() > 0.3 -- 70% шанс отправить третье сообщение
+    
+    if send_third then
+        local random_message = optional_messages[math.random(1, #optional_messages)]
+        pcall(function()
+            channel:SendAsync(random_message)
+            print("Sent optional third message: " .. random_message)
+        end)
     end
+    
+    -- Устанавливаем флаг, что сообщения отправлены
+    messages_sent_status = true
+    print("Messages sent status set to TRUE")
+    
+    -- Проверяем, нужно ли выполнить серверхоп
+    checkAndServerHop()
 end)
 
 do
@@ -488,14 +470,23 @@ do
     
     print("Rifts found:", rifts_found, "Webhooks sent:", rifts_sent)
     
-    -- Не делаем моментальный серверхоп здесь, так как работает таймер
+    -- Устанавливаем флаг поиска рифтов
+    if rifts_sent > 0 then
+        rifts_found_status = true
+        print("Rifts found status set to TRUE")
+    else
+        print("No rifts found or sent. Will wait for messages before server hop.")
+    end
+    
+    -- Проверяем, нужно ли выполнить серверхоп
+    checkAndServerHop()
 end
 
--- Добавляем принудительный серверхоп через 30 секунд после запуска, если по каким-то причинам обычный таймер не сработал
+-- Добавляем принудительный серверхоп через 30 секунд после запуска, если по каким-то причинам ни одно условие не сработало
 task.spawn(function()
     task.wait(30)
-    if os.time() - getgenv().ServerHopSettings.last_hop_time >= 30 then
-        print("Forced server hop after 30 seconds")
+    if not (rifts_found_status and messages_sent_status) then
+        print("Forced server hop after 30 seconds - conditions not met")
         serverhop()
     end
 end)
