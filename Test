@@ -2,7 +2,13 @@
 getgenv().Optimization = {
     state = true, -- вкл/выкл
     hide_screen = true, -- выключает прорисовку графики, бустит жесточайше фпс (вкл/выкл)
-    fps = 8
+    fps = 3
+};
+
+-- Настройка серверхопа каждые 15 секунд
+getgenv().ServerHopSettings = {
+    interval = 15, -- серверхоп каждые 15 секунд
+    last_hop_time = os.time()
 };
 
 if getgenv().Optimization.state then
@@ -164,15 +170,10 @@ local whitelisted_eggs = { -- теперь тут меняешь вебхуки 
         color = 16711680 -- Красный цвет
     }
 };
-
--- Фиксированные сообщения для отправки (первые 2 всегда эти, 3-е опционально)
-local required_messages = {
-    "Underworld Egg is found! ģģ/ easyrift 🔥",
-    "Best Pet Shop = ģģ/ easyrift 🔥"
-};
-
-local optional_messages = {
+local spam_messages = {
     "Best Rift Finder = ģģ/ easyrift 🔥",
+    "Underworld Egg is found! ģģ/ easyrift 🔥",
+    "Best Pet Shop = ģģ/ easyrift 🔥",
     "REACH THE LEADERBOARDS USING ğğ/ easyrift 🏆",
     "SECRETS GIVE-AWAY HAPPENING ģģ/ easyrift 🌟",
     "X25 LUCK RIFTS AT ģģ/ easyrift 🍀"
@@ -218,139 +219,89 @@ local notify = function(webhook, data)
     return response;
 end
 
--- Переменная для отслеживания статуса поиска рифтов
-local rifts_found_status = false;
--- Переменная для отслеживания статуса отправки сообщений
-local messages_sent_status = false;
--- Флаг, чтобы не делать серверхоп несколько раз
-local is_server_hopping = false;
+-- НОВЫЙ КОД: Переработанная функция серверхопа с использованием рабочего скрипта
+-- Глобальные переменные для серверхопа
+local PlaceID = game.PlaceId
+local AllIDs = {}
+local foundAnything = ""
+local actualHour = os.date("!*t").hour
+local Deleted = false
 
--- ИСПРАВЛЕНО: Флаг для предотвращения повторных попыток серверхопа
-local server_hop_cooldown = false;
+-- Загрузка данных о посещенных серверах
+local File = pcall(function()
+    AllIDs = game:GetService('HttpService'):JSONDecode(readfile("NotSameServers.json"))
+end)
+if not File then
+    table.insert(AllIDs, actualHour)
+    writefile("NotSameServers.json", game:GetService('HttpService'):JSONEncode(AllIDs))
+end
 
--- Функция для проверки и запуска серверхопа если оба условия выполнены
-local function checkAndServerHop()
-    if is_server_hopping then return end
-    
-    if rifts_found_status and messages_sent_status then
-        is_server_hopping = true
-        print("Both conditions met (rifts found and messages sent). Starting server hop...")
-        -- Добавляем задержку перед серверхопом чтобы убедиться, что Discord вебхуки отправились
-        task.wait(3)
-        serverhop()
+-- Функция для поиска нового сервера
+local function TPReturner()
+    local Site;
+    if foundAnything == "" then
+        Site = game.HttpService:JSONDecode(game:HttpGet('https://games.roblox.com/v1/games/' .. PlaceID .. '/servers/Public?sortOrder=Asc&limit=100'))
+    else
+        Site = game.HttpService:JSONDecode(game:HttpGet('https://games.roblox.com/v1/games/' .. PlaceID .. '/servers/Public?sortOrder=Asc&limit=100&cursor=' .. foundAnything))
+    end
+    local ID = ""
+    if Site.nextPageCursor and Site.nextPageCursor ~= "null" and Site.nextPageCursor ~= nil then
+        foundAnything = Site.nextPageCursor
+    end
+    local num = 0;
+    for i,v in pairs(Site.data) do
+        local Possible = true
+        ID = tostring(v.id)
+        if tonumber(v.maxPlayers) > tonumber(v.playing) then
+            for _,Existing in pairs(AllIDs) do
+                if num ~= 0 then
+                    if ID == tostring(Existing) then
+                        Possible = false
+                    end
+                else
+                    if tonumber(actualHour) ~= tonumber(Existing) then
+                        local delFile = pcall(function()
+                            delfile("NotSameServers.json")
+                            AllIDs = {}
+                            table.insert(AllIDs, actualHour)
+                        end)
+                    end
+                end
+                num = num + 1
+            end
+            if Possible == true then
+                table.insert(AllIDs, ID)
+                wait()
+                pcall(function()
+                    writefile("NotSameServers.json", game:GetService('HttpService'):JSONEncode(AllIDs))
+                    wait()
+                    game:GetService("TeleportService"):TeleportToPlaceInstance(PlaceID, ID, game.Players.LocalPlayer)
+                end)
+                wait(4)
+            end
+        end
     end
 end
 
--- Улучшенный сервер-хоп для предотвращения попадания на одни и те же серверы
-local serverhop = function()
-    -- Проверка на кулдаун и установка флага
-    if server_hop_cooldown then 
-        print("Server hop is on cooldown, waiting...")
-        return
-    end
-    
-    server_hop_cooldown = true
-    
-    -- ИСПРАВЛЕНО: Увеличен интервал между попытками подключения к серверу
-    -- Добавляем случайную задержку для рассинхронизации аккаунтов
-    local random_delay = math.random(4, 7) -- Увеличено до 4-7 секунд
-    print("Adding random delay before server hop:", random_delay, "seconds")
-    task.wait(random_delay)
-    
+-- Основная функция серверхопа
+local function serverhop()
     print("Initiating server hop at:", os.date("%H:%M:%S", os.time()))
-
-    local file = "serverhop_history.json";
-    local history = {};
-    local current_time = os.time();
     
-    -- Load history if file exists
-    if pcall(function() readfile(file) end) then
-        history = http_service:JSONDecode(readfile(file))
-        
-        local new_history = {};
-        for serverId, jt in pairs(history) do
-            -- ИЗМЕНЕНО: Увеличили время хранения истории с 300 до 900 секунд (15 минут)
-            if current_time - jt < 900 then
-                new_history[serverId] = jt;
-            end
-        end
-
-        history = new_history;
-    end
+    -- Обновляем время последнего серверхопа
+    getgenv().ServerHopSettings.last_hop_time = os.time()
     
-    -- ИСПРАВЛЕНО: Обработка ошибок для предотвращения краша скрипта
-    local success, servers = pcall(function()
-        -- Добавляем жеребьевку для более случайного распределения серверов
-        local page_size = 100
-        local page_offset = math.random(0, 3) * page_size
-        
-        local req = request({
-            Url = string.format("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Desc&limit=%d&cursor=%s&excludeFullGames=true", 
-                game.PlaceId,
-                page_size,
-                page_offset > 0 and tostring(page_offset) or ""
-            );
-        })
-        
-        local body = http_service:JSONDecode(req.Body);
-        
-        local valid_servers = {};
-        
-        if body and body.data then
-            for _, server in pairs(body.data) do
-                if server.playing >= 2 and 
-                   server.playing <= 10 and
-                   server.id ~= game.JobId and 
-                   not history[server.id] then
-                    
-                    -- Приоритизируем серверы с меньшим количеством игроков (для распределения аккаунтов)
-                    local priority = 50 - server.playing
-                    for i = 1, priority do
-                        table.insert(valid_servers, server);
-                    end
-                end
-            end
+    -- Используем функцию TPReturner для поиска нового сервера
+    pcall(function()
+        TPReturner()
+        if foundAnything ~= "" then
+            TPReturner()
         end
-        
-        return valid_servers
     end)
     
-    -- ИСПРАВЛЕНО: Безопасная логика серверхопа с повторными попытками
-    if success and servers and #servers > 0 then
-        pcall(function()
-            -- Выбираем действительно случайный сервер из взвешенного списка
-            local selected_server = servers[math.random(1, #servers)];
-            history[selected_server.id] = current_time;
-            writefile(file, http_service:JSONEncode(history));
-            
-            print("Selected server with", selected_server.playing, "players")
-            
-            -- ИСПРАВЛЕНО: Используем pcall для отлова ошибок
-            pcall(function()
-                game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, selected_server.id, local_player);
-            end)
-            
-            -- Даем время на телепортацию
-            task.wait(8)
-            
-            -- Если мы все еще здесь, значит телепортация не удалась
-            print("Teleport may have failed, trying public teleport")
-            pcall(function()
-                game:GetService("TeleportService"):Teleport(game.PlaceId, local_player);
-            end)
-        end)
-    else
-        print("No suitable servers found or error occurred, trying public teleport")
-        pcall(function()
-            game:GetService("TeleportService"):Teleport(game.PlaceId, local_player);
-        end)
-    end
-    
-    -- Сбрасываем кулдаун через 10 секунд для следующей попытки, если текущая не удалась
-    task.spawn(function()
-        task.wait(10)
-        server_hop_cooldown = false
-        is_server_hopping = false
+    -- Если по какой-то причине TPReturner не сработал, используем обычный телепорт
+    wait(5) -- Ждем 5 секунд, чтобы проверить успешность телепортации
+    pcall(function()
+        game:GetService("TeleportService"):Teleport(PlaceID, game.Players.LocalPlayer)
     end)
 end
 
@@ -360,72 +311,35 @@ task.spawn(function() -- anti afk (xz zachem, poidet)
     for _,v in pairs(getconnections(game:GetService("UserInputService").WindowFocusReleased)) do v:Disable() end
 end)
 
--- ИСПРАВЛЕНО: Измененная логика отправки сообщений с задержкой в 3 секунды
 task.spawn(function()
-    local success, channel = pcall(function()
-        return game:GetService("TextChatService"):WaitForChild("TextChannels"):WaitForChild("RBXGeneral", 10);
-    end)
-    
-    if not success or not channel then
-        print("Failed to get chat channel, trying alternative method")
-        channel = nil
-        -- Попытка использовать устаревшую систему чата в случае ошибки
-        pcall(function()
-            local ChatEvents = game:GetService("ReplicatedStorage"):WaitForChild("DefaultChatSystemChatEvents", 10)
-            if ChatEvents then
-                local SayMessageRequest = ChatEvents:WaitForChild("SayMessageRequest", 5)
-                if SayMessageRequest then
-                    channel = {
-                        SendAsync = function(_, message)
-                            SayMessageRequest:FireServer(message, "All")
-                            return true
-                        end
-                    }
-                    success = true
-                    print("Using legacy chat system")
-                end
-            end
-        end)
+    local channel = game:GetService("TextChatService"):WaitForChild("TextChannels"):WaitForChild("RBXGeneral");
+    local time = 1;
+    while task.wait() do
+        channel:SendAsync(spam_messages[Random.new(tick()):NextInteger(1, #spam_messages)]);
+        time += 2;
+        if time > 6 then
+            time = 1;
+        end
+
+        task.wait(time);
     end
+end)
+
+-- Серверхоп каждые 15 секунд
+task.spawn(function()
+    -- Добавляем небольшую начальную задержку, чтобы не перепрыгивать сразу
+    task.wait(3)
     
-    if not success or not channel then
-        print("Failed to initialize chat system. No messages will be sent.")
-        -- Устанавливаем флаг сообщений как отправленные, чтобы не блокировать серверхоп
-        messages_sent_status = true
-        checkAndServerHop()
-        return
-    end
-    
-    -- Ждем немного, чтобы сначала скрипт проверил рифты
-    task.wait(5)
-    
-    local message_count = 0
-    
-    -- Отправляем два обязательных сообщения с задержкой в 3 секунды
-    for i, message in ipairs(required_messages) do
-        pcall(function()
-            if channel:SendAsync(message) then
-                message_count = message_count + 1
-                print("Sent required message " .. i .. ": " .. message .. " | Total: " .. message_count)
-            end
-        end)
+    while true do
+        task.wait(1) -- Проверяем каждую секунду для более точного срабатывания
+        local current_time = os.time()
+        local elapsed_time = current_time - getgenv().ServerHopSettings.last_hop_time
         
-        -- ИСПРАВЛЕНО: Задержка 3 секунды между сообщениями
-        task.wait(3)
+        if elapsed_time >= getgenv().ServerHopSettings.interval then
+            print("Server hop interval reached:", elapsed_time, "seconds")
+            serverhop()
+        end
     end
-    
-    -- Устанавливаем флаг, что сообщения отправлены (если отправлены как минимум 2)
-    if message_count >= 2 then
-        messages_sent_status = true
-        print("Messages sent status set to TRUE (sent " .. message_count .. " messages)")
-    else
-        print("Failed to send all required messages, only sent " .. message_count)
-        -- Если не удалось отправить оба обязательных сообщения, все равно разрешаем серверхоп
-        messages_sent_status = true
-    end
-    
-    -- Проверяем, нужно ли выполнить серверхоп
-    checkAndServerHop()
 end)
 
 do
@@ -490,13 +404,13 @@ do
         local discord_time = time_to_discorddate(time);
         local height = math.floor(rift:GetPivot().Position.Y) - 4;
         
-        -- Новый формат сообщения с добавленной кнопкой-ссылкой
+        -- Формат сообщения с кликабельной ссылкой и изображением справа
         local message = {
             content = data.role_id and data.role_id ~= "" and ("<@&" .. data.role_id .. ">") or "",
             embeds = {
                 {
                     title = data.name .. " has been found!",
-                    description = "🪄 Tutorial how to join pinned in <#1369315912049492069>\n\n**[🔗 CLICK HERE TO JOIN](" .. join_link .. ")**",
+                    description = "**[🔗 Click here to join](" .. join_link .. ")**\n\n🪄Tutorial how to join pinned in https://discord.com/channels/1279491047616938005/1369315912049492069",
                     fields = {
                         {
                             name = "⏲ Expires in",
@@ -546,40 +460,18 @@ do
     
     print("Rifts found:", rifts_found, "Webhooks sent:", rifts_sent)
     
-    -- Устанавливаем флаг поиска рифтов
-    if rifts_sent > 0 then
-        rifts_found_status = true
-        print("Rifts found status set to TRUE")
-    else
-        print("No rifts found or sent. Will wait for messages before server hop.")
-        -- ИСПРАВЛЕНО: Даже если рифты не найдены, устанавливаем флаг через задержку
-        -- чтобы не блокировать серверхоп навсегда если рифтов нет
-        task.spawn(function()
-            task.wait(10)
-            rifts_found_status = true
-            print("Force setting rifts_found_status to TRUE after timeout")
-            checkAndServerHop()
-        end)
-    end
-    
-    -- Проверяем, нужно ли выполнить серверхоп
-    checkAndServerHop()
+    -- Не делаем моментальный серверхоп здесь, так как работает таймер
 end
 
--- Добавляем принудительный серверхоп через 30 секунд после запуска, если по каким-то причинам ни одно условие не сработало
+-- Добавляем принудительный серверхоп через 30 секунд после запуска, если по каким-то причинам обычный таймер не сработал
 task.spawn(function()
     task.wait(30)
-    if not is_server_hopping then
-        print("Forced server hop after 30 seconds - conditions may not have been met")
+    if os.time() - getgenv().ServerHopSettings.last_hop_time >= 30 then
+        print("Forced server hop after 30 seconds")
         serverhop()
     end
 end)
 
--- ИСПРАВЛЕНО: Улучшенная обработка кика с сервера
-game:GetService("CoreGui"):FindFirstChild("RobloxPromptGui"):FindFirstChild("promptOverlay").ChildAdded:Connect(function(child) 
-    if child.Name == "ErrorPrompt" then
-        print("Game kick detected, will try to server hop")
-        task.wait(1) -- Небольшая задержка
-        serverhop()
-    end
+game:GetService("CoreGui"):FindFirstChild("RobloxPromptGui"):FindFirstChild("promptOverlay").ChildAdded:Connect(function(child) -- при кике игрой
+    serverhop();
 end)
