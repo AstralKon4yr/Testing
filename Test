@@ -2,13 +2,16 @@
 getgenv().Optimization = {
     state = true, -- вкл/выкл
     hide_screen = true, -- выключает прорисовку графики, бустит жесточайше фпс (вкл/выкл)
-    fps = 9
+    fps = 10
 };
 
 -- Настройка серверхопа каждые 15 секунд
 getgenv().ServerHopSettings = {
-    interval = 15, -- серверхоп каждые 15 секунд
-    last_hop_time = os.time()
+    interval = 15, -- изменено с 120 на 15 секунд
+    last_hop_time = os.time() - math.random(0, 15), -- рандомное начальное время для рассинхронизации
+    use_random_offset = true, -- использовать ли рандомную задержку перед хопом
+    min_players = 2, -- минимальное количество игроков в сервере для перехода
+    max_players = 10 -- максимальное количество игроков в сервере для перехода (из 50)
 };
 
 if getgenv().Optimization.state then
@@ -219,90 +222,88 @@ local notify = function(webhook, data)
     return response;
 end
 
--- НОВЫЙ КОД: Переработанная функция серверхопа с использованием рабочего скрипта
--- Глобальные переменные для серверхопа
-local PlaceID = game.PlaceId
-local AllIDs = {}
-local foundAnything = ""
-local actualHour = os.date("!*t").hour
-local Deleted = false
-
--- Загрузка данных о посещенных серверах
-local File = pcall(function()
-    AllIDs = game:GetService('HttpService'):JSONDecode(readfile("NotSameServers.json"))
-end)
-if not File then
-    table.insert(AllIDs, actualHour)
-    writefile("NotSameServers.json", game:GetService('HttpService'):JSONEncode(AllIDs))
-end
-
--- Функция для поиска нового сервера
-local function TPReturner()
-    local Site;
-    if foundAnything == "" then
-        Site = game.HttpService:JSONDecode(game:HttpGet('https://games.roblox.com/v1/games/' .. PlaceID .. '/servers/Public?sortOrder=Asc&limit=100'))
-    else
-        Site = game.HttpService:JSONDecode(game:HttpGet('https://games.roblox.com/v1/games/' .. PlaceID .. '/servers/Public?sortOrder=Asc&limit=100&cursor=' .. foundAnything))
+-- Улучшенный сервер-хоп для предотвращения попадания на одни и те же серверы
+local serverhop = function()
+    -- Добавляем случайную задержку для рассинхронизации аккаунтов
+    if getgenv().ServerHopSettings.use_random_offset then
+        local random_delay = math.random(1, 3) -- Уменьшено с 3-15 до 1-3 секунд для быстрого хопа
+        print("Adding random delay before server hop:", random_delay, "seconds")
+        wait(random_delay)
     end
-    local ID = ""
-    if Site.nextPageCursor and Site.nextPageCursor ~= "null" and Site.nextPageCursor ~= nil then
-        foundAnything = Site.nextPageCursor
-    end
-    local num = 0;
-    for i,v in pairs(Site.data) do
-        local Possible = true
-        ID = tostring(v.id)
-        if tonumber(v.maxPlayers) > tonumber(v.playing) then
-            for _,Existing in pairs(AllIDs) do
-                if num ~= 0 then
-                    if ID == tostring(Existing) then
-                        Possible = false
-                    end
-                else
-                    if tonumber(actualHour) ~= tonumber(Existing) then
-                        local delFile = pcall(function()
-                            delfile("NotSameServers.json")
-                            AllIDs = {}
-                            table.insert(AllIDs, actualHour)
-                        end)
-                    end
-                end
-                num = num + 1
-            end
-            if Possible == true then
-                table.insert(AllIDs, ID)
-                wait()
-                pcall(function()
-                    writefile("NotSameServers.json", game:GetService('HttpService'):JSONEncode(AllIDs))
-                    wait()
-                    game:GetService("TeleportService"):TeleportToPlaceInstance(PlaceID, ID, game.Players.LocalPlayer)
-                end)
-                wait(4)
-            end
-        end
-    end
-end
-
--- Основная функция серверхопа
-local function serverhop()
-    print("Initiating server hop at:", os.date("%H:%M:%S", os.time()))
     
     -- Обновляем время последнего серверхопа
     getgenv().ServerHopSettings.last_hop_time = os.time()
+    print("Initiating server hop at:", os.date("%H:%M:%S", getgenv().ServerHopSettings.last_hop_time))
+
+    local file = "serverhop_history.json";
+    local history = {};
+    local current_time = os.time();
     
-    -- Используем функцию TPReturner для поиска нового сервера
-    pcall(function()
-        TPReturner()
-        if foundAnything ~= "" then
-            TPReturner()
+    -- Load history if file exists
+    if pcall(function() readfile(file) end) then
+        history = http_service:JSONDecode(readfile(file))
+        
+        local new_history = {};
+        for serverId, jt in pairs(history) do
+            if current_time - jt < 300 then -- Уменьшено с 540 до 300 секунд (5 минут)
+                new_history[serverId] = jt;
+            end
         end
+
+        history = new_history;
+    end
+    
+    -- Добавляем жеребьевку для более случайного распределения серверов
+    local page_size = 100
+    local page_offset = math.random(0, 3) * page_size
+    
+    local req = request({
+        Url = string.format("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Desc&limit=%d&cursor=%s&excludeFullGames=true", 
+            game.PlaceId,
+            page_size,
+            page_offset > 0 and tostring(page_offset) or ""
+        );
+    })
+    
+    local success, body = pcall(function()
+        return http_service:JSONDecode(req.Body);
     end)
     
-    -- Если по какой-то причине TPReturner не сработал, используем обычный телепорт
-    wait(5) -- Ждем 5 секунд, чтобы проверить успешность телепортации
-    pcall(function()
-        game:GetService("TeleportService"):Teleport(PlaceID, game.Players.LocalPlayer)
-    end)
+    if success and body and body.data then
+        local servers = {};
+        
+        for _, server in pairs(body.data) do
+            if server.playing >= getgenv().ServerHopSettings.min_players and 
+               server.playing <= getgenv().ServerHopSettings.max_players and
+               server.id ~= game.JobId and 
+               not history[server.id] then
+                
+                -- Приоритизируем серверы с меньшим количеством игроков (для распределения аккаунтов)
+                local priority = 50 - server.playing
+                for i = 1, priority do
+                    table.insert(servers, server);
+                end
+            end
+        end
+        
+        if #servers > 0 then
+            -- Выбираем действительно случайный сервер из взвешенного списка
+            local selected_server = servers[math.random(1, #servers)];
+            history[selected_server.id] = current_time;
+            writefile(file, http_service:JSONEncode(history));
+            
+            print("Selected server with", selected_server.playing, "players")
+            game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, selected_server.id, local_player);
+        else
+            print("No suitable servers found, trying public teleport")
+            game:GetService("TeleportService"):Teleport(game.PlaceId, local_player);
+            -- Убираем бесконечный цикл, который может зависнуть
+        end
+    else
+        print("Error fetching servers, trying public teleport")
+        game:GetService("TeleportService"):Teleport(game.PlaceId, local_player);
+        -- Убираем бесконечный цикл, который может зависнуть
+    end
 end
 
 task.spawn(function() -- anti afk (xz zachem, poidet)
@@ -325,7 +326,7 @@ task.spawn(function()
     end
 end)
 
--- Серверхоп каждые 15 секунд
+-- Серверхоп каждые 15 секунд вместо 2 минут
 task.spawn(function()
     -- Добавляем небольшую начальную задержку, чтобы не перепрыгивать сразу
     task.wait(3)
@@ -404,7 +405,7 @@ do
         local discord_time = time_to_discorddate(time);
         local height = math.floor(rift:GetPivot().Position.Y) - 4;
         
-        -- Формат сообщения с кликабельной ссылкой и изображением справа
+        -- ИСПРАВЛЕНО: Новый формат сообщения с кликабельной ссылкой и изображением справа
         local message = {
             content = data.role_id and data.role_id ~= "" and ("<@&" .. data.role_id .. ">") or "",
             embeds = {
@@ -432,8 +433,8 @@ do
                             value = luck
                         }
                     },
-                    color = data.color or 4508791,
-                    thumbnail = {
+                    color = data.color or 4508791, -- Используем цвет для рифта или стандартный
+                    thumbnail = { -- Изменено на thumbnail, чтобы изображение было справа, а не снизу
                         url = data.image
                     },
                     footer = {
