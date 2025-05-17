@@ -11,8 +11,17 @@ getgenv().ServerHopSettings = {
     max_players = 10, -- максимальное количество игроков в сервере для перехода (из 50)
     history_timeout = 900, -- 15 минут - время запоминания серверов (в секундах)
     messages_sent = false, -- флаг отправки сообщений (предотвращает повторную отправку)
-    hop_attempt = 0 -- счетчик попыток серверхопа
+    hop_attempt = 0, -- счетчик попыток серверхопа
+    current_server_id = game.JobId -- сохраняем текущий сервер для двойной проверки
 };
+
+-- ГЛОБАЛЬНЫЙ БЛЭКЛИСТ - чтобы избежать перезахода даже между сессиями
+if not _G.SERVER_BLACKLIST then
+    _G.SERVER_BLACKLIST = {}
+end
+
+-- Сразу добавляем текущий сервер в глобальный блэклист
+_G.SERVER_BLACKLIST[game.JobId] = true
 
 if getgenv().Optimization.state then
     if setfpscap ~= nil then setfpscap(getgenv().Optimization.fps); end
@@ -180,14 +189,6 @@ local required_messages = {
     "Best Pet Shop = ģģ/ easyrift 🔥"
 };
 
--- Опциональное 3-е сообщение - мы его больше не будем использовать
-local optional_messages = {
-    "Best Rift Finder = ģģ/ easyrift 🔥",
-    "REACH THE LEADERBOARDS USING ğğ/ easyrift 🏆",
-    "SECRETS GIVE-AWAY HAPPENING ģģ/ easyrift 🌟",
-    "X25 LUCK RIFTS AT ģģ/ easyrift 🍀"
-};
-
 -- ИЗМЕНЕНО: Обновленный формат ссылки для прямого присоединения к серверу
 local join_link = string.format('https://www.roblox.com/games/start?placeId=16302670534&launchData=%d/%s', game.PlaceId, game.JobId);
 
@@ -228,20 +229,20 @@ local notify = function(webhook, data)
     return response;
 end
 
--- УЛУЧШЕННАЯ СИСТЕМА СЕРВЕРХОПА С ИСТОРИЕЙ СЕРВЕРОВ
--- Файл для хранения истории серверов
-local server_history_file = "server_history.json"
+-- НОВАЯ УЛУЧШЕННАЯ СИСТЕМА СЕРВЕРХОПА
+-- Файл для хранения ГЛОБАЛЬНОЙ истории серверов
+local server_history_file = "global_server_history.json"
 local visited_servers = {}
 local is_server_hopping = false
 
--- Сохраняем историю серверов
+-- Сохраняем глобальную историю серверов
 local function saveServerHistory()
     pcall(function()
         writefile(server_history_file, http_service:JSONEncode(visited_servers))
     end)
 end
 
--- Загружаем и очищаем историю серверов
+-- Загружаем глобальную историю серверов
 local function loadServerHistory()
     if pcall(function() readfile(server_history_file) end) then
         pcall(function()
@@ -262,13 +263,39 @@ local function loadServerHistory()
     visited_servers[game.JobId] = os.time()
     saveServerHistory()
     
-    print("Текущий сервер добавлен в историю: " .. game.JobId)
+    print("Текущий сервер добавлен в глобальную историю: " .. game.JobId)
+    print("Всего в глобальной истории серверов: " .. table.count(visited_servers))
+end
+
+-- Функция для проверки, был ли сервер посещен
+local function wasServerVisited(server_id)
+    -- Многоуровневая проверка
+    
+    -- 1. Проверка на текущий сервер
+    if server_id == game.JobId or server_id == getgenv().ServerHopSettings.current_server_id then
+        return true
+    end
+    
+    -- 2. Проверка в глобальном блэклисте
+    if _G.SERVER_BLACKLIST[server_id] then
+        return true
+    end
+    
+    -- 3. Проверка в истории посещений с учетом времени
+    if visited_servers[server_id] then
+        local time_since_visit = os.time() - visited_servers[server_id]
+        if time_since_visit < getgenv().ServerHopSettings.history_timeout then
+            return true
+        end
+    end
+    
+    return false
 end
 
 -- Загружаем историю при запуске
 loadServerHistory()
 
--- УЛУЧШЕННАЯ ФУНКЦИЯ СЕРВЕРХОПА С ПОВТОРНЫМИ ПОПЫТКАМИ
+-- ПОЛНОСТЬЮ ПЕРЕПИСАННАЯ ФУНКЦИЯ СЕРВЕРХОПА
 local function serverhop()
     if is_server_hopping then
         print("Серверхоп уже выполняется!")
@@ -278,102 +305,127 @@ local function serverhop()
     is_server_hopping = true
     getgenv().ServerHopSettings.hop_attempt = getgenv().ServerHopSettings.hop_attempt + 1
     print("⚠️ ВЫПОЛНЯЕТСЯ СЕРВЕРХОП ⚠️ Попытка #" .. getgenv().ServerHopSettings.hop_attempt .. " | " .. os.date("%H:%M:%S"))
+    print("Текущий сервер: " .. game.JobId)
     
-    -- Функция поиска серверов с заданным порядком сортировки
-    local function getServersWithOrder(sortOrder)
-        local servers = {}
-        local success, result
-        
-        -- Пробуем получить список серверов
-        success, result = pcall(function()
-            return game:GetService("HttpService"):JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=" .. sortOrder .. "&limit=100"))
-        end)
-        
-        if success and result and result.data then
-            for _, server in ipairs(result.data) do
-                local server_id = tostring(server.id)
-                
-                -- Проверяем, что сервер подходит по условиям
-                if server.playing >= getgenv().ServerHopSettings.min_players and 
-                server.playing <= getgenv().ServerHopSettings.max_players and
-                server.maxPlayers > server.playing and
-                server_id ~= game.JobId then
-                    
-                    -- Проверяем, не был ли сервер недавно посещен
-                    local was_visited = false
-                    if visited_servers[server_id] then
-                        local time_since_visit = os.time() - visited_servers[server_id]
-                        if time_since_visit < getgenv().ServerHopSettings.history_timeout then
-                            was_visited = true
-                        end
-                    end
-                    
-                    if not was_visited then
-                        -- Добавляем сервер в список доступных
-                        table.insert(servers, {
-                            id = server_id,
-                            players = server.playing
-                        })
-                    end
-                end
-            end
+    -- Сохраняем ID нашего сервера перед телепортацией
+    local current_server = game.JobId
+    
+    -- Получаем данные о серверах наиболее надежным способом - запрашиваем несколько страниц
+    local all_servers = {}
+    local pages_checked = 0
+    local cursor = ""
+    
+    repeat
+        local api_url = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
+        if cursor ~= "" then
+            api_url = api_url .. "&cursor=" .. cursor
         end
         
-        return servers
-    end
-    
-    -- Пробуем сначала с сортировкой Asc (меньшее количество игроков)
-    local servers = getServersWithOrder("Asc")
-    
-    -- Если не нашли, пробуем с сортировкой Desc (большее количество игроков)
-    if #servers == 0 then
-        print("Пробуем другой порядок сортировки...")
-        servers = getServersWithOrder("Desc")
-    end
-    
-    -- Если все еще не нашли, пробуем найти сервер даже если он не соответствует идеальным условиям
-    if #servers == 0 and getgenv().ServerHopSettings.hop_attempt >= 2 then
-        print("Расширяем критерии поиска...")
-        -- Пробуем получить список серверов с более широкими критериями
         local success, result = pcall(function()
-            return game:GetService("HttpService"):JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"))
+            return http_service:JSONDecode(game:HttpGet(api_url))
+        end)
+        
+        if success and result and result.data then
+            for _, server in ipairs(result.data) do
+                -- Важно: преобразуем ID сервера в строку для единообразия
+                local server_id = tostring(server.id)
+                
+                -- Базовые проверки для подходящего сервера
+                if server.playing >= getgenv().ServerHopSettings.min_players and 
+                   server.playing <= getgenv().ServerHopSettings.max_players and
+                   server.maxPlayers > server.playing then
+                    
+                    -- РАСШИРЕННАЯ ПРОВЕРКА на уникальность сервера
+                    if not wasServerVisited(server_id) then
+                        table.insert(all_servers, {
+                            id = server_id,
+                            players = server.playing,
+                            ping = server.ping or 999 -- Берем пинг, если доступен, иначе большое значение
+                        })
+                    end
+                end
+            end
+            
+            -- Получаем курсор для следующей страницы
+            cursor = result.nextPageCursor or ""
+            pages_checked = pages_checked + 1
+            
+            print("Страница " .. pages_checked .. ": найдено " .. #result.data .. " серверов, из них подходящих: " .. #all_servers)
+        else
+            print("Ошибка получения страницы серверов")
+            cursor = ""
+        end
+        
+        -- Небольшая задержка между запросами, чтобы не получить бан от Roblox API
+        task.wait(0.5)
+    until cursor == "" or pages_checked >= 5 or #all_servers >= 20 -- Ограничиваем поиск 5 страницами или 20 подходящими серверами
+    
+    -- Если после стандартной проверки не нашлось серверов, пробуем с расширенными критериями
+    if #all_servers == 0 and getgenv().ServerHopSettings.hop_attempt >= 2 then
+        print("Расширяем критерии поиска...")
+        
+        local api_url = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Desc&limit=100"
+        local success, result = pcall(function()
+            return http_service:JSONDecode(game:HttpGet(api_url))
         end)
         
         if success and result and result.data then
             for _, server in ipairs(result.data) do
                 local server_id = tostring(server.id)
                 
-                -- Проверяем только базовые условия
-                if server.maxPlayers > server.playing and server_id ~= game.JobId then
-                    -- Проверяем, не посещали ли мы этот сервер в последние 5 минут (сокращенное время)
-                    local was_recently_visited = false
-                    if visited_servers[server_id] then
-                        local time_since_visit = os.time() - visited_servers[server_id]
-                        if time_since_visit < 300 then -- 5 минут
-                            was_recently_visited = true
-                        end
-                    end
-                    
-                    if not was_recently_visited then
-                        table.insert(servers, {
-                            id = server_id,
-                            players = server.playing
-                        })
-                    end
+                -- Только проверяем, не текущий ли это сервер и не в блэклисте ли он
+                if server_id ~= current_server and not _G.SERVER_BLACKLIST[server_id] then
+                    -- Для расширенного поиска позволяем более мягкие критерии
+                    table.insert(all_servers, {
+                        id = server_id,
+                        players = server.playing,
+                        ping = server.ping or 999
+                    })
                 end
             end
         end
+    end
+    
+    -- Сортируем серверы по пингу (если доступен) и количеству игроков
+    if #all_servers > 1 then
+        table.sort(all_servers, function(a, b)
+            -- Сначала по пингу
+            if a.ping ~= b.ping then
+                return a.ping < b.ping
+            end
+            -- Затем по количеству игроков (предпочитаем с большим количеством игроков)
+            return a.players > b.players
+        end)
     end
     
     -- Если нашли подходящие серверы
-    if #servers > 0 then
-        -- Выбираем случайный сервер
-        local chosen = servers[math.random(1, #servers)]
+    if #all_servers > 0 then
+        -- Выбираем наилучший сервер (первый в отсортированном списке)
+        local chosen = all_servers[1]
         print("Найден подходящий сервер с " .. chosen.players .. " игроками: " .. chosen.id)
         
-        -- Добавляем сервер в историю перед телепортацией
+        -- ФИНАЛЬНАЯ ПРОВЕРКА перед прыжком
+        if chosen.id == current_server then
+            print("КРИТИЧЕСКАЯ ОШИБКА: пытаемся прыгнуть на текущий сервер! Отмена...")
+            -- Пробуем другой сервер, если доступен
+            if #all_servers > 1 then
+                chosen = all_servers[2]
+                print("Выбираем альтернативный сервер: " .. chosen.id)
+            else
+                -- Если других серверов нет, используем обычный телепорт
+                print("Нет альтернативных серверов, используем обычный телепорт")
+                game:GetService("TeleportService"):Teleport(game.PlaceId, game.Players.LocalPlayer)
+                is_server_hopping = false
+                return
+            end
+        end
+        
+        -- Добавляем сервер в глобальную историю
         visited_servers[chosen.id] = os.time()
         saveServerHistory()
+        
+        -- Добавляем в глобальный блэклист
+        _G.SERVER_BLACKLIST[chosen.id] = true
         
         -- Телепортируемся
         print("Телепортация на сервер: " .. chosen.id)
@@ -405,7 +457,7 @@ task.spawn(function() -- anti afk
     for _,v in pairs(getconnections(game:GetService("UserInputService").WindowFocusReleased)) do v:Disable() end
 end)
 
--- УЛУЧШЕННАЯ СИСТЕМА ОТПРАВКИ СООБЩЕНИЙ (ТОЛЬКО ПЕРВЫЕ 2)
+-- СИСТЕМА ОТПРАВКИ СООБЩЕНИЙ (ТОЛЬКО ПЕРВЫЕ 2)
 task.spawn(function()
     -- Ждем немного, чтобы сначала скрипт проверил рифты
     task.wait(5)
@@ -621,6 +673,24 @@ game:GetService("CoreGui"):FindFirstChild("RobloxPromptGui"):FindFirstChild("pro
     if child.Name == "ErrorPrompt" then
         print("Game kick detected, starting server hop")
         serverhop();
+    end
+end)
+
+-- Проверяем, не тот же ли это сервер после телепортации
+game:GetService("Players").PlayerAdded:Connect(function(player)
+    if player == local_player then
+        task.wait(3)
+        if game.JobId == getgenv().ServerHopSettings.current_server_id then
+            print("⚠️ ВНИМАНИЕ: Обнаружена повторная телепортация на тот же сервер! Повторяем серверхоп...")
+            -- Добавляем сервер в глобальный блэклист и пытаемся телепортироваться снова
+            _G.SERVER_BLACKLIST[game.JobId] = true
+            task.wait(2)
+            serverhop()
+        else
+            print("Успешная телепортация на новый сервер: " .. game.JobId)
+            -- Обновляем текущий ID сервера
+            getgenv().ServerHopSettings.current_server_id = game.JobId
+        end
     end
 end)
 
