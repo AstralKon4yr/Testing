@@ -171,6 +171,14 @@ local whitelisted_eggs = { -- теперь тут меняешь вебхуки 
         name = "Underworld 3",
         image = "https://cdn.discordapp.com/attachments/811315406299725904/1372529424385179789/latest.png",
         color = 16711680 -- Красный цвет
+    },
+    ["neon-egg"] = {
+        webhook = "https://discord.com/api/webhooks/1373379653078745229/5vvR83VC-JYjREcrFeZsSiMJqFbfeUgHAm1tEVzO8GDpo0y5PBBOpksPHScfIDfMl6Bm",
+        role_id = "",
+        luck = { "x25" },
+        name = "Neon Egg",
+        image = "https://cdn.discordapp.com/attachments/811315406299725904/1373381340573073559/latest.png?ex=682a348b&is=6828e30b&hm=41270c56fbd0be25327238970b1176fca6128b540d5d3d2332cc97d2e83fbb00&",
+        color = 16711680 -- Красный цвет
     }
 };
 
