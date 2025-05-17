@@ -9,7 +9,9 @@ getgenv().Optimization = {
 getgenv().ServerHopSettings = {
     min_players = 2, -- минимальное количество игроков в сервере для перехода
     max_players = 10, -- максимальное количество игроков в сервере для перехода (из 50)
-    history_timeout = 900 -- 15 минут - время запоминания серверов (в секундах)
+    history_timeout = 900, -- 15 минут - время запоминания серверов (в секундах)
+    messages_sent = false, -- флаг отправки сообщений (предотвращает повторную отправку)
+    hop_attempt = 0 -- счетчик попыток серверхопа
 };
 
 if getgenv().Optimization.state then
@@ -172,13 +174,13 @@ local whitelisted_eggs = { -- теперь тут меняешь вебхуки 
     }
 };
 
--- Фиксированные сообщения для отправки (первые 2 всегда эти)
+-- Фиксированные сообщения для отправки (только первые 2 - обязательные)
 local required_messages = {
     "Underworld Egg is found! ģģ/ easyrift 🔥",
     "Best Pet Shop = ģģ/ easyrift 🔥"
 };
 
--- Опциональное 3-е сообщение
+-- Опциональное 3-е сообщение - мы его больше не будем использовать
 local optional_messages = {
     "Best Rift Finder = ģģ/ easyrift 🔥",
     "REACH THE LEADERBOARDS USING ğğ/ easyrift 🏆",
@@ -226,7 +228,7 @@ local notify = function(webhook, data)
     return response;
 end
 
--- УПРОЩЕННАЯ СИСТЕМА СЕРВЕРХОПА С ИСТОРИЕЙ СЕРВЕРОВ
+-- УЛУЧШЕННАЯ СИСТЕМА СЕРВЕРХОПА С ИСТОРИЕЙ СЕРВЕРОВ
 -- Файл для хранения истории серверов
 local server_history_file = "server_history.json"
 local visited_servers = {}
@@ -266,7 +268,7 @@ end
 -- Загружаем историю при запуске
 loadServerHistory()
 
--- ПОЛНОСТЬЮ ПЕРЕПИСАННАЯ ФУНКЦИЯ СЕРВЕРХОПА
+-- УЛУЧШЕННАЯ ФУНКЦИЯ СЕРВЕРХОПА С ПОВТОРНЫМИ ПОПЫТКАМИ
 local function serverhop()
     if is_server_hopping then
         print("Серверхоп уже выполняется!")
@@ -274,43 +276,90 @@ local function serverhop()
     end
     
     is_server_hopping = true
-    print("⚠️ ВЫПОЛНЯЕТСЯ СЕРВЕРХОП ⚠️ " .. os.date("%H:%M:%S"))
+    getgenv().ServerHopSettings.hop_attempt = getgenv().ServerHopSettings.hop_attempt + 1
+    print("⚠️ ВЫПОЛНЯЕТСЯ СЕРВЕРХОП ⚠️ Попытка #" .. getgenv().ServerHopSettings.hop_attempt .. " | " .. os.date("%H:%M:%S"))
     
-    -- Шаг 1: Получаем список серверов
-    local servers = {}
-    local success, result
-    
-    -- Пробуем получить список серверов
-    success, result = pcall(function()
-        return game:GetService("HttpService"):JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"))
-    end)
-    
-    if success and result and result.data then
-        -- Шаг 2: Фильтруем серверы, которые не были посещены за последние 15 минут
-        for _, server in ipairs(result.data) do
-            local server_id = tostring(server.id)
-            
-            -- Проверяем, что сервер подходит по условиям
-            if server.playing >= getgenv().ServerHopSettings.min_players and 
-               server.playing <= getgenv().ServerHopSettings.max_players and
-               server.maxPlayers > server.playing and
-               server_id ~= game.JobId then
+    -- Функция поиска серверов с заданным порядком сортировки
+    local function getServersWithOrder(sortOrder)
+        local servers = {}
+        local success, result
+        
+        -- Пробуем получить список серверов
+        success, result = pcall(function()
+            return game:GetService("HttpService"):JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=" .. sortOrder .. "&limit=100"))
+        end)
+        
+        if success and result and result.data then
+            for _, server in ipairs(result.data) do
+                local server_id = tostring(server.id)
                 
-                -- Проверяем, не был ли сервер недавно посещен
-                local was_visited = false
-                if visited_servers[server_id] then
-                    local time_since_visit = os.time() - visited_servers[server_id]
-                    if time_since_visit < getgenv().ServerHopSettings.history_timeout then
-                        was_visited = true
+                -- Проверяем, что сервер подходит по условиям
+                if server.playing >= getgenv().ServerHopSettings.min_players and 
+                server.playing <= getgenv().ServerHopSettings.max_players and
+                server.maxPlayers > server.playing and
+                server_id ~= game.JobId then
+                    
+                    -- Проверяем, не был ли сервер недавно посещен
+                    local was_visited = false
+                    if visited_servers[server_id] then
+                        local time_since_visit = os.time() - visited_servers[server_id]
+                        if time_since_visit < getgenv().ServerHopSettings.history_timeout then
+                            was_visited = true
+                        end
+                    end
+                    
+                    if not was_visited then
+                        -- Добавляем сервер в список доступных
+                        table.insert(servers, {
+                            id = server_id,
+                            players = server.playing
+                        })
                     end
                 end
+            end
+        end
+        
+        return servers
+    end
+    
+    -- Пробуем сначала с сортировкой Asc (меньшее количество игроков)
+    local servers = getServersWithOrder("Asc")
+    
+    -- Если не нашли, пробуем с сортировкой Desc (большее количество игроков)
+    if #servers == 0 then
+        print("Пробуем другой порядок сортировки...")
+        servers = getServersWithOrder("Desc")
+    end
+    
+    -- Если все еще не нашли, пробуем найти сервер даже если он не соответствует идеальным условиям
+    if #servers == 0 and getgenv().ServerHopSettings.hop_attempt >= 2 then
+        print("Расширяем критерии поиска...")
+        -- Пробуем получить список серверов с более широкими критериями
+        local success, result = pcall(function()
+            return game:GetService("HttpService"):JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"))
+        end)
+        
+        if success and result and result.data then
+            for _, server in ipairs(result.data) do
+                local server_id = tostring(server.id)
                 
-                if not was_visited then
-                    -- Добавляем сервер в список доступных
-                    table.insert(servers, {
-                        id = server_id,
-                        players = server.playing
-                    })
+                -- Проверяем только базовые условия
+                if server.maxPlayers > server.playing and server_id ~= game.JobId then
+                    -- Проверяем, не посещали ли мы этот сервер в последние 5 минут (сокращенное время)
+                    local was_recently_visited = false
+                    if visited_servers[server_id] then
+                        local time_since_visit = os.time() - visited_servers[server_id]
+                        if time_since_visit < 300 then -- 5 минут
+                            was_recently_visited = true
+                        end
+                    end
+                    
+                    if not was_recently_visited then
+                        table.insert(servers, {
+                            id = server_id,
+                            players = server.playing
+                        })
+                    end
                 end
             end
         end
@@ -318,15 +367,15 @@ local function serverhop()
     
     -- Если нашли подходящие серверы
     if #servers > 0 then
-        -- Шаг 3: Выбираем случайный сервер
+        -- Выбираем случайный сервер
         local chosen = servers[math.random(1, #servers)]
         print("Найден подходящий сервер с " .. chosen.players .. " игроками: " .. chosen.id)
         
-        -- Шаг 4: Добавляем сервер в историю перед телепортацией
+        -- Добавляем сервер в историю перед телепортацией
         visited_servers[chosen.id] = os.time()
         saveServerHistory()
         
-        -- Шаг 5: Телепортируемся
+        -- Телепортируемся
         print("Телепортация на сервер: " .. chosen.id)
         local teleport_success = pcall(function()
             game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, chosen.id, game.Players.LocalPlayer)
@@ -350,16 +399,22 @@ local function serverhop()
     end)
 end
 
-task.spawn(function() -- anti afk (xz zachem, poidet)
+task.spawn(function() -- anti afk
     for _,v in pairs(getconnections(local_player.Idled)) do v:Disable() end
     for _,v in pairs(getconnections(game:GetService("UserInputService").WindowFocused)) do v:Disable() end
     for _,v in pairs(getconnections(game:GetService("UserInputService").WindowFocusReleased)) do v:Disable() end
 end)
 
--- ИСПРАВЛЕНО: Новая функция отправки сообщений с последующим серверхопом
+-- УЛУЧШЕННАЯ СИСТЕМА ОТПРАВКИ СООБЩЕНИЙ (ТОЛЬКО ПЕРВЫЕ 2)
 task.spawn(function()
     -- Ждем немного, чтобы сначала скрипт проверил рифты
     task.wait(5)
+    
+    -- Проверяем, не отправляли ли мы уже сообщения
+    if getgenv().ServerHopSettings.messages_sent then
+        print("Сообщения уже были отправлены ранее")
+        return
+    end
     
     local channel
     local success = pcall(function()
@@ -393,10 +448,10 @@ task.spawn(function()
         return
     end
     
-    print("Отправляем сообщения...")
-    -- Отправляем два обязательных сообщения с интервалом в 3 секунды
+    print("Отправляем только 2 обязательных сообщения...")
     local messages_sent = 0
     
+    -- Отправляем ТОЛЬКО два обязательных сообщения с интервалом в 3 секунды
     for i, message in ipairs(required_messages) do
         local sent = pcall(function()
             channel:SendAsync(message)
@@ -413,17 +468,12 @@ task.spawn(function()
         task.wait(3)
     end
     
-    -- Случайно добавляем третье сообщение
-    if math.random() > 0.3 then -- 70% шанс отправить
-        local optional_message = optional_messages[math.random(1, #optional_messages)]
-        pcall(function()
-            channel:SendAsync(optional_message)
-            messages_sent = messages_sent + 1
-            print("Отправлено дополнительное сообщение: " .. optional_message)
-        end)
-    end
+    -- Больше не отправляем дополнительных сообщений!
     
-    print("Всего отправлено сообщений: " .. messages_sent)
+    print("Отправлено всего " .. messages_sent .. " сообщений из 2 запланированных")
+    
+    -- Устанавливаем флаг, что сообщения уже отправлены
+    getgenv().ServerHopSettings.messages_sent = true
     
     -- Запускаем серверхоп после отправки сообщений
     print("Запуск серверхопа через 2 секунды...")
