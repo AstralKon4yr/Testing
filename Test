@@ -10,7 +10,8 @@ getgenv().ServerHopSettings = {
     min_players = 2, -- минимальное количество игроков в сервере для перехода
     max_players = 10, -- максимальное количество игроков в сервере для перехода (из 50)
     history_timeout = 900, -- 15 минут - время запоминания серверов (в секундах)
-    messages_sent = false -- флаг отправки сообщений (предотвращает повторную отправку)
+    messages_sent = false, -- флаг отправки сообщений (предотвращает повторную отправку)
+    fast_mode = true -- режим быстрого серверхопа
 };
 
 -- Создаем глобальную переменную для блокировки серверхопа
@@ -45,11 +46,27 @@ local function getRifts()
     return rifts ~= nil
 end
 
--- Пробуем найти рифты с задержкой
-repeat
-    task.wait(2) -- Ожидание для загрузки необходимых компонентов
-    print("Waiting for Rifts to load...")
-until getRifts()
+-- Быстрая проверка рифтов с коротким таймаутом
+local rifts_loaded = false
+task.spawn(function()
+    local start_time = os.time()
+    repeat
+        task.wait(1) -- Проверяем каждую секунду
+        rifts_loaded = getRifts()
+        -- Если прошло более 5 секунд и рифты не загрузились, продолжаем без них
+        if os.time() - start_time > 5 and not rifts_loaded then
+            print("Timeout waiting for rifts, continuing...")
+            break
+        end
+    until rifts_loaded
+    
+    -- Если не удалось загрузить рифты, запускаем серверхоп
+    if not rifts_loaded then
+        print("Rifts not found, starting server hop soon...")
+        task.wait(1)
+        serverhop()
+    end
+end)
 
 -- Система для предотвращения дублирования вебхуков
 local cache_file = "rifts_cache.json"
@@ -86,15 +103,6 @@ if pcall(function() readfile(cache_file) end) then
     end)
     cleanCache() -- Очищаем кэш при загрузке
 end
-
--- Запускаем автоматическую очистку кэша каждые 9 минут
-task.spawn(function()
-    while true do
-        task.wait(540) -- 9 минут
-        print("Scheduled cache cleanup...")
-        cleanCache()
-    end
-end)
 
 local whitelisted_eggs = { -- теперь тут меняешь вебхуки НА КАЖДОЕ ЯЙЦО/СУНДУК, в luck через запятую в кавычках прописываешь множитель удачи
     ["rainbow-egg"] = {
@@ -230,7 +238,7 @@ local notify = function(webhook, data)
     return response;
 end
 
--- НОВАЯ ПРОСТАЯ ФУНКЦИЯ СЕРВЕРХОПА
+-- НОВАЯ БЫСТРАЯ ФУНКЦИЯ СЕРВЕРХОПА
 local function serverhop()
     -- Проверяем, не выполняется ли уже серверхоп
     if _G.IS_HOPPING then
@@ -285,7 +293,7 @@ local function serverhop()
             end
             
             -- Если нашли достаточно серверов, прекращаем поиск
-            if #servers >= 10 then
+            if #servers >= 5 then
                 break
             end
         end
@@ -358,9 +366,9 @@ local function serverhop()
         game:GetService("TeleportService"):Teleport(game.PlaceId)
     end
     
-    -- Сбрасываем флаг через 10 секунд на случай сбоя телепортации
+    -- Сбрасываем флаг через 5 секунд на случай сбоя телепортации
     task.spawn(function()
-        task.wait(10)
+        task.wait(5)
         _G.IS_HOPPING = false
     end)
 end
@@ -371,10 +379,10 @@ task.spawn(function() -- anti afk
     for _,v in pairs(getconnections(game:GetService("UserInputService").WindowFocusReleased)) do v:Disable() end
 end)
 
--- СИСТЕМА ОТПРАВКИ СООБЩЕНИЙ (ТОЛЬКО ПЕРВЫЕ 2)
+-- УСКОРЕННАЯ СИСТЕМА ОТПРАВКИ СООБЩЕНИЙ (ТОЛЬКО ПЕРВЫЕ 2)
 task.spawn(function()
-    -- Ждем немного, чтобы сначала скрипт проверил рифты
-    task.wait(5)
+    -- Уменьшаем ожидание для более быстрой работы
+    task.wait(2)
     
     -- Проверяем, не отправляли ли мы уже сообщения
     if getgenv().ServerHopSettings.messages_sent then
@@ -384,7 +392,7 @@ task.spawn(function()
     
     local channel
     local success = pcall(function()
-        channel = game:GetService("TextChatService"):WaitForChild("TextChannels"):WaitForChild("RBXGeneral", 10)
+        channel = game:GetService("TextChatService"):WaitForChild("TextChannels"):WaitForChild("RBXGeneral", 5)
     end)
     
     if not success or not channel then
@@ -414,10 +422,10 @@ task.spawn(function()
         return
     end
     
-    print("Отправляем только 2 обязательных сообщения...")
+    print("Быстрая отправка 2 обязательных сообщений...")
     local messages_sent = 0
     
-    -- Отправляем ТОЛЬКО два обязательных сообщения с интервалом в 3 секунды
+    -- Отправляем ТОЛЬКО два обязательных сообщения с УМЕНЬШЕННЫМ интервалом в 1 секунду
     for i, message in ipairs(required_messages) do
         local sent = pcall(function()
             channel:SendAsync(message)
@@ -430,8 +438,8 @@ task.spawn(function()
             print("Не удалось отправить сообщение: " .. message)
         end
         
-        -- Ждем 3 секунды между сообщениями
-        task.wait(3)
+        -- Уменьшаем задержку между сообщениями до 1 секунды
+        task.wait(1)
     end
     
     print("Отправлено всего " .. messages_sent .. " сообщений из 2 запланированных")
@@ -439,9 +447,8 @@ task.spawn(function()
     -- Устанавливаем флаг, что сообщения уже отправлены
     getgenv().ServerHopSettings.messages_sent = true
     
-    -- Запускаем серверхоп после отправки сообщений
-    print("Запуск серверхопа через 2 секунды...")
-    task.wait(2)
+    -- Запускаем серверхоп СРАЗУ после отправки сообщений
+    print("Запуск серверхопа сразу после отправки сообщений...")
     serverhop()
 end)
 
@@ -449,134 +456,140 @@ do
     local rifts_found = 0 -- счетчик найденных рифтов
     local rifts_sent = 0  -- счетчик отправленных вебхуков
     
-    for _, rift in pairs(rifts:GetChildren()) do
-        if not rift:IsA("Model") or not whitelisted_eggs[rift.Name] then
-            continue;
-        end
-        
-        rifts_found = rifts_found + 1
-        
-        local data = whitelisted_eggs[rift.Name];
-        local luck = "None";
-        local gui
-        
-        -- Исправление: добавление проверок на nil и ожидания загрузки
-        local display = rift:FindFirstChild("Display")
-        if display then
-            gui = display:FindFirstChildOfClass("SurfaceGui")
-            if data.luck ~= nil then
-                if gui == nil then
-                    repeat 
-                        task.wait(0.5)
-                        gui = display:FindFirstChildOfClass("SurfaceGui")
-                    until gui ~= nil or task.wait(5) -- таймаут 5 секунд на случай, если GUI не загрузится
-                end
-                
-                if gui and gui:FindFirstChild("Icon") and gui.Icon:FindFirstChild("Luck") then
-                    if not table.find(data.luck, gui.Icon.Luck.Text) then
-                        continue
-                    end
-                    luck = gui.Icon.Luck.Text
-                else
-                    continue -- Пропускаем если нет нужных компонентов
-                end
+    -- Проверяем, загрузились ли рифты
+    if rifts_loaded and rifts then
+        for _, rift in pairs(rifts:GetChildren()) do
+            if not rift:IsA("Model") or not whitelisted_eggs[rift.Name] then
+                continue;
             end
-        else
-            continue -- Пропускаем если нет Display
-        end
-        
-        if not gui or not gui:FindFirstChild("Timer") then
-            continue -- Пропускаем если нет таймера
-        end
+            
+            rifts_found = rifts_found + 1
+            
+            local data = whitelisted_eggs[rift.Name];
+            local luck = "None";
+            local gui
+            
+            -- Ускоренная проверка GUI
+            local display = rift:FindFirstChild("Display")
+            if display then
+                gui = display:FindFirstChildOfClass("SurfaceGui")
+                if data.luck ~= nil then
+                    if gui == nil then
+                        -- Уменьшаем время ожидания загрузки GUI
+                        for i = 1, 5 do
+                            task.wait(0.2)
+                            gui = display:FindFirstChildOfClass("SurfaceGui")
+                            if gui then break end
+                        end
+                        if not gui then continue end
+                    end
+                    
+                    if gui and gui:FindFirstChild("Icon") and gui.Icon:FindFirstChild("Luck") then
+                        if not table.find(data.luck, gui.Icon.Luck.Text) then
+                            continue
+                        end
+                        luck = gui.Icon.Luck.Text
+                    else
+                        continue -- Пропускаем если нет нужных компонентов
+                    end
+                end
+            else
+                continue -- Пропускаем если нет Display
+            end
+            
+            if not gui or not gui:FindFirstChild("Timer") then
+                continue -- Пропускаем если нет таймера
+            end
 
-        -- Создаем уникальный ID для рифта на основе его типа и координат (с округлением)
-        local position = rift:GetPivot().Position
-        local rift_id = string.format("%s_%d_%d_%d", 
-            rift.Name, 
-            math.floor(position.X), 
-            math.floor(position.Y), 
-            math.floor(position.Z))
-        
-        -- Проверяем, был ли этот рифт уже найден и отправлен ранее
-        if rifts_cache[rift_id] then
-            print("Rift already reported:", rift_id)
-            continue
-        end
-        
-        local time = os.time() + parse_time(gui.Timer.Text);
-        local discord_time = time_to_discorddate(time);
-        local height = math.floor(rift:GetPivot().Position.Y) - 4;
-        
-        -- ИСПРАВЛЕНО: Новый формат сообщения с кликабельной ссылкой и изображением справа
-        local message = {
-            content = data.role_id and data.role_id ~= "" and ("<@&" .. data.role_id .. ">") or "",
-            embeds = {
-                {
-                    title = data.name .. " has been found!",
-                    description = "**[🔗 Click here to join](" .. join_link .. ")**\n\n🪄Tutorial how to join pinned in https://discord.com/channels/1279491047616938005/1369315912049492069",
-                    fields = {
-                        {
-                            name = "⏲ Expires in",
-                            value = discord_time,
-                            inline = true
+            -- Создаем уникальный ID для рифта на основе его типа и координат (с округлением)
+            local position = rift:GetPivot().Position
+            local rift_id = string.format("%s_%d_%d_%d", 
+                rift.Name, 
+                math.floor(position.X), 
+                math.floor(position.Y), 
+                math.floor(position.Z))
+            
+            -- Проверяем, был ли этот рифт уже найден и отправлен ранее
+            if rifts_cache[rift_id] then
+                print("Rift already reported:", rift_id)
+                continue
+            end
+            
+            local time = os.time() + parse_time(gui.Timer.Text);
+            local discord_time = time_to_discorddate(time);
+            local height = math.floor(rift:GetPivot().Position.Y) - 4;
+            
+            -- ИСПРАВЛЕНО: Новый формат сообщения с кликабельной ссылкой и изображением справа
+            local message = {
+                content = data.role_id and data.role_id ~= "" and ("<@&" .. data.role_id .. ">") or "",
+                embeds = {
+                    {
+                        title = data.name .. " has been found!",
+                        description = "**[🔗 Click here to join](" .. join_link .. ")**\n\n🪄Tutorial how to join pinned in https://discord.com/channels/1279491047616938005/1369315912049492069",
+                        fields = {
+                            {
+                                name = "⏲ Expires in",
+                                value = discord_time,
+                                inline = true
+                            },
+                            {
+                                name = "📏 Height",
+                                value = tostring(height),
+                                inline = true
+                            },
+                            {
+                                name = "👤 Players",
+                                value = tostring(#players:GetPlayers()),
+                                inline = true
+                            },
+                            {
+                                name = "🍀 Luck",
+                                value = luck
+                            }
                         },
-                        {
-                            name = "📏 Height",
-                            value = tostring(height),
-                            inline = true
+                        color = data.color or 4508791, -- Используем цвет для рифта или стандартный
+                        thumbnail = {
+                            url = data.image
                         },
-                        {
-                            name = "👤 Players",
-                            value = tostring(#players:GetPlayers()),
-                            inline = true
-                        },
-                        {
-                            name = "🍀 Luck",
-                            value = luck
+                        footer = {
+                            text = "gg/easyrift • " .. os.date("%H:%M", os.time())
                         }
-                    },
-                    color = data.color or 4508791, -- Используем цвет для рифта или стандартный
-                    thumbnail = {
-                        url = data.image
-                    },
-                    footer = {
-                        text = "gg/easyrift • " .. os.date("%H:%M", os.time())
                     }
                 }
             }
-        }
 
-        -- Сохраняем рифт в кэше с текущим временем
-        rifts_cache[rift_id] = os.time()
+            -- Сохраняем рифт в кэше с текущим временем
+            rifts_cache[rift_id] = os.time()
+            
+            -- Сохраняем обновленный кэш
+            pcall(function()
+                writefile(cache_file, http_service:JSONEncode(rifts_cache))
+            end)
+            
+            notify(data.webhook, message);
+            rifts_sent = rifts_sent + 1
+            
+            -- Уменьшаем задержку между отправками вебхуков
+            task.wait(0.3)
+        end
         
-        -- Сохраняем обновленный кэш
-        pcall(function()
-            writefile(cache_file, http_service:JSONEncode(rifts_cache))
-        end)
-        
-        notify(data.webhook, message);
-        rifts_sent = rifts_sent + 1
-        
-        -- Добавляем небольшую задержку между отправками вебхуков
-        task.wait(0.5)
+        print("Rifts found:", rifts_found, "Webhooks sent:", rifts_sent)
+    else
+        print("Рифты не были загружены, пропускаем проверку")
     end
-    
-    print("Rifts found:", rifts_found, "Webhooks sent:", rifts_sent)
-    
-    -- Не делаем моментальный серверхоп здесь, так как отправка сообщений запустит его
 end
 
--- ГАРАНТИРОВАННЫЙ серверхоп спустя 15 секунд
+-- БЫСТРЫЙ серверхоп через 5 секунд вместо 15
 task.spawn(function()
-    task.wait(15) -- Ровно 15 секунд ожидания
-    print("Гарантированный серверхоп после 15 секунд...")
+    task.wait(5) -- Уменьшено с 15 до 5 секунд
+    print("Быстрый серверхоп через 5 секунд...")
     serverhop()
 end)
 
--- РЕЗЕРВНЫЙ СЕРВЕРХОП спустя 30 секунд если что-то пошло не так
+-- РЕЗЕРВНЫЙ СЕРВЕРХОП спустя 10 секунд если что-то пошло не так
 task.spawn(function()
-    task.wait(30) -- 30 секунд
-    print("Резервный серверхоп после 30 секунд...")
+    task.wait(10) -- Уменьшено с 30 до 10 секунд
+    print("Резервный серверхоп через 10 секунд...")
     game:GetService("TeleportService"):Teleport(game.PlaceId, game.Players.LocalPlayer)
 end)
 
@@ -594,7 +607,7 @@ game:GetService("Players").LocalPlayer.OnTeleport:Connect(function(state)
         print("Телепортация начата...")
     elseif state == Enum.TeleportState.Failed then
         print("Телепортация не удалась, пробуем снова...")
-        task.wait(2)
+        task.wait(1) -- Уменьшено с 2 до 1 секунды
         serverhop()
     end
 end)
@@ -603,4 +616,4 @@ end)
 print("RiftFinder initialized successfully!")
 print("Current server: " .. game.JobId)
 print("Запоминаем сервера на " .. getgenv().ServerHopSettings.history_timeout .. " секунд")
-print("Гарантированный серверхоп через 15 секунд")
+print("Быстрый серверхоп через 5 секунд")
