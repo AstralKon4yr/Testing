@@ -125,7 +125,7 @@ local function cleanCache()
         writefile(cache_file, http_service:JSONEncode(rifts_cache))
     end)
     
-    print("Cache cleaned: Removed", removed_count, "items. Current cache size:", #rifts_cache)
+    print("Cache cleaned: Removed", removed_count, "items")
 end
 
 -- Загружаем кэш, если он существует
@@ -135,15 +135,6 @@ if pcall(function() readfile(cache_file) end) then
     end)
     cleanCache() -- Очищаем кэш при загрузке
 end
-
--- Запускаем автоматическую очистку кэша каждые 9 минут
-task.spawn(function()
-    while true do
-        task.wait(540) -- 9 минут
-        print("Scheduled cache cleanup...")
-        cleanCache()
-    end
-end)
 
 local whitelisted_eggs = { -- теперь тут меняешь вебхуки НА КАЖДОЕ ЯЙЦО/СУНДУК, в luck через запятую в кавычках прописываешь множитель удачи
     ["rainbow-egg"] = {
@@ -285,6 +276,128 @@ task.spawn(function() -- anti afk
     for _,v in pairs(getconnections(game:GetService("UserInputService").WindowFocusReleased)) do v:Disable() end
 end)
 
+-- ПРОВЕРКА И ОТПРАВКА ВЕБХУКОВ (ИСПРАВЛЕНО)
+-- ВАЖНО: Вынесено в начало для гарантии выполнения
+local rifts_found = 0 -- счетчик найденных рифтов
+local rifts_sent = 0  -- счетчик отправленных вебхуков
+
+-- Проверка рифтов и отправка вебхуков
+for _, rift in pairs(rifts:GetChildren()) do
+    if not rift:IsA("Model") or not whitelisted_eggs[rift.Name] then
+        continue;
+    end
+    
+    rifts_found = rifts_found + 1
+    
+    local data = whitelisted_eggs[rift.Name];
+    local luck = "None";
+    local gui
+    
+    -- Исправление: добавление проверок на nil и ожидания загрузки
+    local display = rift:FindFirstChild("Display")
+    if display then
+        gui = display:FindFirstChildOfClass("SurfaceGui")
+        if data.luck ~= nil then
+            if gui == nil then
+                repeat 
+                    task.wait(0.2)
+                    gui = display:FindFirstChildOfClass("SurfaceGui")
+                until gui ~= nil or task.wait(2) -- таймаут 2 секунды для быстрой работы
+            end
+            
+            if gui and gui:FindFirstChild("Icon") and gui.Icon:FindFirstChild("Luck") then
+                if not table.find(data.luck, gui.Icon.Luck.Text) then
+                    continue
+                end
+                luck = gui.Icon.Luck.Text
+            else
+                continue -- Пропускаем если нет нужных компонентов
+            end
+        end
+    else
+        continue -- Пропускаем если нет Display
+    end
+    
+    if not gui or not gui:FindFirstChild("Timer") then
+        continue -- Пропускаем если нет таймера
+    end
+
+    -- Создаем уникальный ID для рифта на основе его типа и координат (с округлением)
+    local position = rift:GetPivot().Position
+    local rift_id = string.format("%s_%d_%d_%d", 
+        rift.Name, 
+        math.floor(position.X), 
+        math.floor(position.Y), 
+        math.floor(position.Z))
+    
+    -- Проверяем, был ли этот рифт уже найден и отправлен ранее
+    if rifts_cache[rift_id] then
+        print("Rift already reported:", rift_id)
+        continue
+    end
+    
+    local time = os.time() + parse_time(gui.Timer.Text);
+    local discord_time = time_to_discorddate(time);
+    local height = math.floor(rift:GetPivot().Position.Y) - 4;
+    
+    -- Формируем сообщение для вебхука
+    local message = {
+        content = data.role_id and data.role_id ~= "" and ("<@&" .. data.role_id .. ">") or "",
+        embeds = {
+            {
+                title = data.name .. " has been found!",
+                description = "**[🔗 Click here to join](" .. join_link .. ")**\n\n🪄Tutorial how to join pinned in https://discord.com/channels/1279491047616938005/1369315912049492069",
+                fields = {
+                    {
+                        name = "⏲ Expires in",
+                        value = discord_time,
+                        inline = true
+                    },
+                    {
+                        name = "📏 Height",
+                        value = tostring(height),
+                        inline = true
+                    },
+                    {
+                        name = "👤 Players",
+                        value = tostring(#players:GetPlayers()),
+                        inline = true
+                    },
+                    {
+                        name = "🍀 Luck",
+                        value = luck
+                    }
+                },
+                color = data.color or 4508791, -- Используем цвет для рифта или стандартный
+                thumbnail = {
+                    url = data.image
+                },
+                footer = {
+                    text = "gg/astral-market • " .. os.date("%H:%M", os.time())
+                }
+            }
+        }
+    }
+
+    -- Сохраняем рифт в кэше с текущим временем
+    rifts_cache[rift_id] = os.time()
+    
+    -- Сохраняем обновленный кэш
+    pcall(function()
+        writefile(cache_file, http_service:JSONEncode(rifts_cache))
+    end)
+    
+    -- Отправляем вебхук
+    print("Отправка вебхука для: " .. data.name .. " (ID: " .. rift_id .. ")")
+    notify(data.webhook, message);
+    rifts_sent = rifts_sent + 1
+    
+    -- Уменьшаем задержку между отправками вебхуков
+    task.wait(0.3)
+end
+
+print("Rifts found:", rifts_found, "Webhooks sent:", rifts_sent)
+
 -- УСКОРЕННАЯ СИСТЕМА ОТПРАВКИ СООБЩЕНИЙ (ТОЛЬКО ПЕРВЫЕ 2)
 task.spawn(function()
     -- Уменьшаем ожидание для более быстрой работы
@@ -352,126 +465,6 @@ task.spawn(function()
     -- Устанавливаем флаг, что сообщения уже отправлены
     getgenv().ServerHopSettings.messages_sent = true
 end)
-
--- ЗАМЕНЕНО: НОВАЯ СИСТЕМА ПОИСКА РИФТОВ
-do
-    local rifts_found = 0 -- счетчик найденных рифтов
-    local rifts_sent = 0  -- счетчик отправленных вебхуков
-    
-    for _, rift in pairs(rifts:GetChildren()) do
-        if not rift:IsA("Model") or not whitelisted_eggs[rift.Name] then
-            continue;
-        end
-        
-        rifts_found = rifts_found + 1
-        
-        local data = whitelisted_eggs[rift.Name];
-        local luck = "None";
-        local gui
-        
-        -- Исправление: добавление проверок на nil и ожидания загрузки
-        local display = rift:FindFirstChild("Display")
-        if display then
-            gui = display:FindFirstChildOfClass("SurfaceGui")
-            if data.luck ~= nil then
-                if gui == nil then
-                    repeat 
-                        task.wait(0.5)
-                        gui = display:FindFirstChildOfClass("SurfaceGui")
-                    until gui ~= nil or task.wait(5) -- таймаут 5 секунд на случай, если GUI не загрузится
-                end
-                
-                if gui and gui:FindFirstChild("Icon") and gui.Icon:FindFirstChild("Luck") then
-                    if not table.find(data.luck, gui.Icon.Luck.Text) then
-                        continue
-                    end
-                    luck = gui.Icon.Luck.Text
-                else
-                    continue -- Пропускаем если нет нужных компонентов
-                end
-            end
-        else
-            continue -- Пропускаем если нет Display
-        end
-        
-        if not gui or not gui:FindFirstChild("Timer") then
-            continue -- Пропускаем если нет таймера
-        end
-
-        -- Создаем уникальный ID для рифта на основе его типа и координат (с округлением)
-        local position = rift:GetPivot().Position
-        local rift_id = string.format("%s_%d_%d_%d", 
-            rift.Name, 
-            math.floor(position.X), 
-            math.floor(position.Y), 
-            math.floor(position.Z))
-        
-        -- Проверяем, был ли этот рифт уже найден и отправлен ранее
-        if rifts_cache[rift_id] then
-            print("Rift already reported:", rift_id)
-            continue
-        end
-        
-        local time = os.time() + parse_time(gui.Timer.Text);
-        local discord_time = time_to_discorddate(time);
-        local height = math.floor(rift:GetPivot().Position.Y) - 4;
-        
-        -- ИСПРАВЛЕНО: Новый формат сообщения с кликабельной ссылкой и изображением справа
-        local message = {
-            content = data.role_id and data.role_id ~= "" and ("<@&" .. data.role_id .. ">") or "",
-            embeds = {
-                {
-                    title = data.name .. " has been found!",
-                    description = "**[🔗 Click here to join](" .. join_link .. ")**\n\n🪄Tutorial how to join pinned in https://discord.com/channels/1279491047616938005/1369315912049492069",
-                    fields = {
-                        {
-                            name = "⏲ Expires in",
-                            value = discord_time,
-                            inline = true
-                        },
-                        {
-                            name = "📏 Height",
-                            value = tostring(height),
-                            inline = true
-                        },
-                        {
-                            name = "👤 Players",
-                            value = tostring(#players:GetPlayers()),
-                            inline = true
-                        },
-                        {
-                            name = "🍀 Luck",
-                            value = luck
-                        }
-                    },
-                    color = data.color or 4508791, -- Используем цвет для рифта или стандартный
-                    thumbnail = { -- Изменено на thumbnail, чтобы изображение было справа, а не снизу
-                        url = data.image
-                    },
-                    footer = {
-                        text = "gg/astral-market • " .. os.date("%H:%M", os.time())
-                    }
-                }
-            }
-        }
-
-        -- Сохраняем рифт в кэше с текущим временем
-        rifts_cache[rift_id] = os.time()
-        
-        -- Сохраняем обновленный кэш
-        pcall(function()
-            writefile(cache_file, http_service:JSONEncode(rifts_cache))
-        end)
-        
-        notify(data.webhook, message);
-        rifts_sent = rifts_sent + 1
-        
-        -- Добавляем небольшую задержку между отправками вебхуков
-        task.wait(0.5)
-    end
-    
-    print("Rifts found:", rifts_found, "Webhooks sent:", rifts_sent)
-end
 
 -- НОВЫЙ СЕРВЕРХОП КОД КАЖДЫЕ 10 СЕКУНД
 task.spawn(function()
