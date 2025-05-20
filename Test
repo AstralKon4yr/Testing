@@ -438,7 +438,7 @@ do
                         url = data.image
                     },
                     footer = {
-                        text = "gg/easyrift • " .. os.date("%H:%M", os.time())
+                        text = "gg/astral-market • " .. os.date("%H:%M", os.time())
                     }
                 }
             }
