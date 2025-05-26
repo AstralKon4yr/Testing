@@ -174,12 +174,9 @@ local whitelisted_eggs = { -- теперь тут меняешь вебхуки 
     }
 };
 local spam_messages = {
-    "Best Rift Finder = ģģ/ astral-market 🔥",
-    "Underworld Egg is found! ģģ/ astral-market 🔥",
     "Best Pet Shop = ģģ/ astral-market 🔥",
     "REACH THE LEADERBOARDS USING ğğ/ astral-market 🏆",
-    "SECRETS GIVE-AWAY HAPPENING ģģ/ astral-market 🌟",
-    "X25 LUCK RIFTS AT ģģ/ astral-market 🍀"
+    "SECRETS GIVE-AWAY HAPPENING ģģ/ astral-market 🌟"
 };
 
 -- ИЗМЕНЕНО: Обновленный формат ссылки для прямого присоединения к серверу
