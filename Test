@@ -51,7 +51,7 @@ local function sendMessage(message)
 end
 
 -- Time between server hops (in seconds)
-time_to_wait = 120
+time_to_wait = 17
 
 -- Main loop
 while wait(1) do  -- Check frequently but only hop after the full time
