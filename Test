@@ -1,3 +1,4 @@
+
 -- В самом начале скрипта добавляем защиту от слишком частых запусков:
 if _G.SCRIPT_RUNNING_TIMESTAMP and os.time() - _G.SCRIPT_RUNNING_TIMESTAMP < 60 then
     print("⚠️ СКРИПТ УЖЕ ЗАПУЩЕН! АВАРИЙНАЯ ОСТАНОВКА...")
